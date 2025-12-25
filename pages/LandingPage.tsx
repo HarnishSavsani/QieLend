@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import networkDiagram from '../assets/blog-1.jpg';
+import networkDiagram from '../src/assets/blog-1.jpg';
 import { useAuth } from '../context/AuthContext';
 
 const LandingPage: React.FC = () => {

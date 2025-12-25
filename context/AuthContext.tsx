@@ -11,7 +11,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from '../firebase';
-import defaultAvatar from '../assets/default-avatar.svg';
+import defaultAvatar from '../src/assets/default-avatar.svg';
 
 interface UserProfile {
   id: string;

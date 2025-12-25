@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import googleLogo from '../assets/google-logo.png';
+import googleLogo from '../src/assets/google-logo.png';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');

@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { useAuth, WalletType } from '../context/AuthContext';
-import metamaskIcon from '../assets/metamask.svg';
-import coinbaseIcon from '../assets/coinbase.png';
-import trustIcon from '../assets/trustwallet.png';
-import qieIcon from '../assets/qie-wallet.png';
+import metamaskIcon from '../src/assets/metamask.svg';
+import coinbaseIcon from '../src/assets/coinbase.png';
+import trustIcon from '../src/assets/trustwallet.png';
+import qieIcon from '../src/assets/qie-wallet.png';
 
 const WalletSelectionModal: React.FC = () => {
   const { isWalletModalOpen, closeWalletModal, connectWallet } = useAuth();

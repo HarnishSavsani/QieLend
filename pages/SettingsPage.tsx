@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import defaultAvatar from '../assets/default-avatar.svg';
+import defaultAvatar from '../src/assets/default-avatar.svg';
 
 type TabType = 'profile' | 'security' | 'notifications' | 'wallets';
 

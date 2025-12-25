@@ -1,6 +1,6 @@
 
 import React from 'react';
-import techHero from '../assets/tech-hero.jpg';
+import techHero from '../src/assets/tech-hero.jpg';
 
 const TechPage: React.FC = () => {
   return (
