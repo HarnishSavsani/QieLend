@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { db } from '../config/firebase';
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
-import { MOCK_ASSETS, MOCK_TRANSACTIONS } from '../config/constants';
+import { MOCK_TRANSACTIONS } from '../config/constants';
 
 import { formatEther } from 'ethers';
 
@@ -49,8 +49,8 @@ const Dashboard: React.FC = () => {
     };
   }, [user]);
 
-  const totalBorrowed = myLoans.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const totalInvested = myInvestments.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const totalBorrowed = myLoans.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const totalInvested = myInvestments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8 py-8 overflow-x-hidden min-h-[calc(100vh-80px)]">
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
                 <div className="p-10 text-center text-white/30 text-sm">No active loan requests.</div>
               ) : (
                 myLoans.map(loan => (
-                  <div key={loan.id} className="p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <Link to={`/loan/${loan.id}`} key={loan.id} className="block p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
                         <div className={`size-10 rounded-full flex items-center justify-center ${loan.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
@@ -120,7 +120,7 @@ const Dashboard: React.FC = () => {
                          <p className="text-sm font-bold text-white">{loan.collateralAmount} {loan.collateralAsset}</p>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
@@ -137,7 +137,7 @@ const Dashboard: React.FC = () => {
                 <div className="p-10 text-center text-white/30 text-sm">You haven't funded any loans yet.</div>
               ) : (
                 myInvestments.map(loan => (
-                  <div key={loan.id} className="p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <Link to={`/loan/${loan.id}`} key={loan.id} className="block p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
                      <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
                            <img src={loan.borrowerAvatar} className="size-8 rounded-full" alt="" />
@@ -147,10 +147,18 @@ const Dashboard: React.FC = () => {
                            </div>
                         </div>
                         <div className="text-right">
-                           <span className="text-xs font-bold text-green-400">Earning</span>
+                           <span className={`text-xs font-bold ${
+                             loan.status === 'active' ? 'text-green-400' : 
+                             loan.status === 'repaid' ? 'text-blue-400' : 
+                             loan.status === 'defaulted' ? 'text-red-400' : 'text-white/50'
+                           }`}>
+                             {loan.status === 'active' ? 'Earning' : 
+                              loan.status === 'repaid' ? 'Repaid' : 
+                              loan.status === 'defaulted' ? 'Defaulted' : loan.status}
+                           </span>
                         </div>
                      </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>

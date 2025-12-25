@@ -2,52 +2,184 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../config/firebase';
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import ProcessingModal from '../components/ProcessingModal';
+
+import { parseEther, Contract, formatEther } from 'ethers';
+import { ERC20_ABI, CONTRACT_ADDRESSES } from '../config/blockchain';
+
+import confetti from 'canvas-confetti';
 
 const LoanDetailsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, showToast } = useAuth();
+  const { user, showToast, lendingPoolContract, signer } = useAuth();
   const [loan, setLoan] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [borrower, setBorrower] = useState<any>(null); // Added state
+
+  // Modal State
+  const [modalTitle, setModalTitle] = useState("Processing Transaction");
+  const [modalSubtitle, setModalSubtitle] = useState("Please confirm in your wallet...");
+  const [successTitle, setSuccessTitle] = useState("Success!");
+  const [successSubtitle, setSuccessSubtitle] = useState("Transaction confirmed.");
 
   useEffect(() => {
-    const fetchLoan = async () => {
-      if (!id) return;
-      try {
-        const docSnap = await getDoc(doc(db, "loans", id));
+    if (!id) return;
+
+    // Real-time listener for the Loan Document
+    const unsubscribe = onSnapshot(doc(db, "loans", id), async (docSnap) => {
         if (docSnap.exists()) {
-          setLoan({ id: docSnap.id, ...docSnap.data() });
+             const loanData: any = { id: docSnap.id, ...docSnap.data() };
+             setLoan(loanData);
+             
+             // Fetch Borrower (This can remain oneshot or be separate listener, oneshot is fine for User profiles)
+             if (loanData.borrowerId) {
+                  const userSnap = await getDoc(doc(db, "users", loanData.borrowerId));
+                  if (userSnap.exists()) {
+                      setBorrower(userSnap.data());
+                  }
+             }
+        } else {
+             setLoan(null); // Handle deleted/non-existent
         }
-      } catch (err) {
-        console.error(err);
-      } finally {
         setIsLoading(false);
-      }
-    };
-    fetchLoan();
+    }, (err) => {
+        console.error("Failed to subscribe to loan:", err);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [id]);
+
+  const fireConfetti = () => {
+    const duration = 3000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 21000 };
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+    }, 250);
+  };
 
   const handleFund = async () => {
     if (!user || !loan || !id) return showToast("Please log in first", "info");
     if (loan.borrowerId === user.id) return showToast("You cannot fund your own loan request.", "error");
     
-    setIsLoading(true);
+    // Setup Modal for Funding
+    setModalTitle("Funding Loan");
+    setModalSubtitle("QIE Tokens being transferred to escrow...");
+    setSuccessTitle("Investment Active!");
+    setSuccessSubtitle("You have funded this loan. Earnings start now.");
+    setIsProcessing(true);
+
     try {
-      await updateDoc(doc(db, "loans", id), {
-        status: 'active',
-        lenderId: user.id,
-        lenderName: `${user.firstName} ${user.lastName}`
-      });
-      setIsProcessing(true);
-    } catch (err) {
+        // ... (Existing Fund Logic managed in Lending Page mostly, but here for redundancy)
+        // Check LendingPage logic for guidance
+         if (!lendingPoolContract) throw new Error("Contract not loaded");
+         
+         const amountWei = parseEther(loan.amount.toString());
+         const tx = await lendingPoolContract.fundLoan(loan.contractLoanId, { value: amountWei });
+         await tx.wait();
+
+         await updateDoc(doc(db, "loans", id), {
+            status: 'active',
+            lenderId: user.id,
+            lenderName: `${user.firstName} ${user.lastName}`,
+            fundedAt: new Date().toISOString()
+         });
+         
+         fireConfetti();
+         // Modal stays open with success message
+    } catch (err: any) {
       console.error(err);
-      showToast("Funding failed. Blockchain congestion detected.", "error");
-      setIsLoading(false);
+      showToast("Funding failed: " + err.message, "error");
+      setIsProcessing(false); // Close modal on error
     }
+  };
+
+  const handleRepay = async () => {
+      if (!lendingPoolContract || !loan) return;
+      
+      // Setup Modal for Repayment
+      setModalTitle("Repaying Loan");
+      setModalSubtitle("Returning principal + interest to lender...");
+      setSuccessTitle("Debt Settled!");
+      setSuccessSubtitle("Loan repaid successfully. Your collateral is now unlocked.");
+      setIsProcessing(true);
+
+      try {
+          const interestAmount = (loan.amount * (loan.apy / 100)); // Simple interest flat fee
+          const totalRepayment = loan.amount + interestAmount;
+          const totalWei = parseEther(totalRepayment.toFixed(18));
+
+          showToast(`Repaying ${totalRepayment.toFixed(4)} QIE...`, "info");
+          
+          const tx = await lendingPoolContract.repayLoan(loan.contractLoanId, { value: totalWei });
+          await tx.wait();
+
+          await updateDoc(doc(db, "loans", loan.id), { status: 'repaid' });
+          
+          fireConfetti();
+      } catch (e: any) {
+          showToast("Repayment failed: " + e.message, "error");
+          setIsProcessing(false);
+      }
+  };
+
+  const handleDefault = async () => {
+      if (!lendingPoolContract || !loan) return;
+      
+      // Time Check
+      if (loan.fundedAt) {
+          const startTime = new Date(loan.fundedAt).getTime();
+          const durationMs = (loan.duration || 0) * 24 * 60 * 60 * 1000;
+          const endTime = startTime + durationMs;
+          const now = Date.now();
+          const remaining = endTime - now;
+
+          if (remaining > 0) {
+              const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+              const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+              const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+              const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+              
+              const timeString = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+              return showToast(`Loan not yet defaulted. ${timeString} remaining.`, "error");
+          }
+      }
+
+      setModalTitle("Checking Default");
+      setModalSubtitle("Verifying loan status on-chain...");
+      setSuccessTitle("Collateral Claimed");
+      setSuccessSubtitle("Liquidation successful. Assets transferred to your wallet.");
+      setIsProcessing(true);
+
+      try {
+          showToast("Checking logic for default...", "info");
+          const tx = await lendingPoolContract.checkDefault(loan.contractLoanId);
+          await tx.wait();
+
+          await updateDoc(doc(db, "loans", loan.id), { status: 'defaulted' });
+          fireConfetti();
+      } catch (e: any) {
+          console.error(e);
+          if (e.message?.includes("Loan not active")) showToast("Loan is not active.", "error");
+          else showToast("Default conditions not met (Time remaining?)", "error");
+          setIsProcessing(false);
+      }
   };
 
   if (isLoading && !isProcessing) return (
@@ -65,8 +197,10 @@ const LoanDetailsPage: React.FC = () => {
       <ProcessingModal 
         isOpen={isProcessing} 
         onClose={() => navigate('/dashboard')} 
-        title="Signing Contract" 
-        subtitle="Escrowing funds and securing collateral on-chain..." 
+        title={modalTitle}
+        subtitle={modalSubtitle}
+        successTitle={successTitle}
+        successMessage={successSubtitle}
       />
 
       <div className="flex items-center gap-2 text-[10px] text-white/50 mb-6 uppercase tracking-wider">
@@ -75,12 +209,16 @@ const LoanDetailsPage: React.FC = () => {
         <span className="text-white">Loan #{loan.id.slice(0, 6)}</span>
       </div>
 
+      {/* ACTION AREA */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-white/5 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-3xl font-black text-white tracking-tight">{loan.amount.toLocaleString()} {loan.asset}</h1>
             <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
-              loan.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'
+              loan.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 
+              loan.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+              loan.status === 'repaid' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+              'bg-red-500/10 text-red-500 border-red-500/20'
             }`}>
               {loan.status.toUpperCase()}
             </span>
@@ -91,18 +229,37 @@ const LoanDetailsPage: React.FC = () => {
           <p className="text-sm text-white/60">Verified Request on QIE Protocol</p>
         </div>
         <div className="flex gap-3">
-          {loan.status === 'pending' && (
+          {/* FUNDING LOGIC */}
+          {loan.status === 'pending' && !isSelfLoan && (
             <button 
-              disabled={isProcessing || isSelfLoan}
+              disabled={isProcessing}
               onClick={handleFund}
-              className={`flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-sm shadow-lg transition-all ${
-                isSelfLoan 
-                ? 'bg-white/5 text-white/30 cursor-not-allowed border border-white/10' 
-                : 'bg-gradient-primary text-white hover:scale-105 shadow-pink-500/20'
-              }`}
+              className="flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-sm shadow-lg transition-all bg-gradient-primary text-white hover:scale-105 shadow-pink-500/20"
             >
-              {isProcessing ? <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : isSelfLoan ? 'Cannot Fund Own Loan' : 'Fund This Loan'}
+              {isProcessing ? <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Fund This Loan'}
             </button>
+          )}
+
+          {/* REPAYMENT LOGIC (Borrower Only) */}
+          {loan.status === 'active' && isSelfLoan && (
+             <button 
+               disabled={isProcessing}
+               onClick={handleRepay}
+               className="flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-sm shadow-lg transition-all bg-green-600 hover:bg-green-500 text-white hover:scale-105 shadow-green-500/20"
+             >
+               {isProcessing ? <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Repay Loan (Principal + Interest)'}
+             </button>
+          )}
+
+          {/* LIQUIDATION LOGIC (Lender Only) */}
+          {loan.status === 'active' && user?.id === loan.lenderId && (
+             <button 
+               disabled={isProcessing}
+               onClick={handleDefault}
+               className="flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-sm shadow-lg transition-all bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/50 hover:scale-105"
+             >
+               {isProcessing ? <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div> : 'Check Default & Claim Collateral'}
+             </button>
           )}
         </div>
       </div>
@@ -151,6 +308,10 @@ const LoanDetailsPage: React.FC = () => {
               </div>
             </div>
             <div className="space-y-4">
+               <div className="flex justify-between items-center text-sm">
+                  <span className="text-white/40">Trust Score</span>
+                  <span className="text-pink-400 font-bold">{borrower?.trustScore || 100} / 100</span>
+               </div>
                <div className="flex justify-between items-center text-sm">
                   <span className="text-white/40">Total Loans</span>
                   <span className="text-white font-bold">12</span>

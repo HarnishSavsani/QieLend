@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { collection, onSnapshot, query, where, updateDoc, doc } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { parseEther } from 'ethers';
 
 const LendPage: React.FC = () => {
-  const { user, lendingPoolContract, showToast } = useAuth();
+  const { user } = useAuth();
   const [loans, setLoans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [fundingLoanId, setFundingLoanId] = useState<string | null>(null);
 
   useEffect(() => {
     // Listen to real-time updates for "pending" loans
@@ -31,46 +29,6 @@ const LendPage: React.FC = () => {
 
     return () => unsubscribe();
   }, [user]);
-
-  const handleFundLoan = async (loan: any) => {
-    if (!user) return showToast("Please log in to fund loans.", "error");
-    if (!lendingPoolContract) return showToast("Wallet connection failed.", "error");
-    if (loan.contractLoanId === undefined) return showToast("Error: Invalid Contract Loan ID.", "error");
-
-    setFundingLoanId(loan.id);
-    try {
-      showToast(`Funding loan for ${loan.amount} ${loan.asset}... Please sign.`, "info");
-      
-      // Smart Contract Call
-      // IMPORTANT: Currently the contract treats all 'amount' as Native Token (QIE) Wei values
-      // If the loan was created as USDT, this will technically require sending QIE. 
-      // For this version, we assume the lender is sending QIE equivalent.
-      const amountWei = parseEther(loan.amount.toString());
-      
-      const tx = await lendingPoolContract.fundLoan(loan.contractLoanId, { value: amountWei });
-      await tx.wait();
-
-      // Update Firebase
-      const loanRef = doc(db, "loans", loan.id);
-      await updateDoc(loanRef, {
-        status: 'active',
-        lenderId: user.id,
-        lenderName: `${user.firstName} ${user.lastName}`,
-        fundedAt: new Date().toISOString()
-      });
-      
-      showToast("Loan funded successfully! You are now earning interest.", "success");
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === 'ACTION_REJECTED') {
-          showToast("Funding cancelled.", "info");
-      } else {
-          showToast("Failed to fund loan: " + (err.reason || err.message), "error");
-      }
-    } finally {
-        setFundingLoanId(null);
-    }
-  };
 
   return (
     <div className="max-w-[1400px] mx-auto relative z-10 px-4 md:px-10 lg:px-20 py-8">
@@ -129,13 +87,12 @@ const LendPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="shrink-0 w-full md:w-auto flex flex-col gap-2">
-                      <button 
-                        onClick={() => handleFundLoan(loan)}
-                        disabled={fundingLoanId === loan.id}
-                        className="w-full block text-center px-8 py-3 rounded-xl bg-gradient-primary text-white font-bold shadow-lg hover:shadow-pink-500/40 transition-all disabled:opacity-50"
-                      >
-                         {fundingLoanId === loan.id ? "Funding..." : "Fund Loan"}
-                      </button>
+                       <Link 
+                         to={`/loan/${loan.id}`}
+                         className="w-full block text-center px-8 py-3 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/50 font-bold hover:bg-purple-500 hover:text-white transition-all"
+                       >
+                          View Details
+                       </Link>
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-sm">

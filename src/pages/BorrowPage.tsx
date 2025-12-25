@@ -63,6 +63,19 @@ const BorrowPage: React.FC = () => {
       return () => clearInterval(interval);
   }, [signer]);
 
+  // Smart Default for Collateral (user feedback)
+  useEffect(() => {
+      if (Object.keys(userBalances).length > 0) {
+          const currentBal = userBalances[collateralAsset] || 0;
+          if (currentBal === 0) {
+              const firstAvailable = SUPPORTED_ASSETS.find(a => (userBalances[a.symbol] || 0) > 0);
+              if (firstAvailable) {
+                  setCollateralAsset(firstAvailable.symbol);
+              }
+          }
+      }
+  }, [userBalances]);
+
   const borrowPrice = prices[borrowAsset] || SUPPORTED_ASSETS.find(a => a.symbol === borrowAsset)?.defaultPrice || 0;
   const collateralPrice = prices[collateralAsset] || SUPPORTED_ASSETS.find(a => a.symbol === collateralAsset)?.defaultPrice || 0;
 

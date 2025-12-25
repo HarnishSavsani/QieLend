@@ -149,7 +149,7 @@ const WalletPage: React.FC = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-            <div className="lg:col-span-2 rounded-2xl p-8 bg-[#1e0b2e]/60 border border-white/10 relative overflow-hidden group">
+            <div className="lg:col-span-2 rounded-2xl p-6 bg-[#1e0b2e]/60 border border-white/10 relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-8 opacity-10">
                 <span className="material-symbols-outlined text-[120px] text-white">shield</span>
               </div>
@@ -158,14 +158,14 @@ const WalletPage: React.FC = () => {
                    <p className="text-white/60 text-sm font-medium">Public Key Address</p>
                    <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Blockchain Verified</span>
                 </div>
-                <p className="text-pink-400 font-mono text-sm mb-6 bg-black/20 px-3 py-1 rounded inline-block border border-white/5 break-all">
+                <p className="text-pink-400 font-mono text-sm mb-4 bg-black/20 px-3 py-1 rounded inline-block border border-white/5 break-all">
                     {user.walletAddress}
                 </p>
-                <div className="flex items-baseline gap-2 mb-6">
+                <div className="flex items-baseline gap-2 mb-4">
                   <h2 className="text-4xl md:text-5xl font-bold text-white">${totalUsdValuation}</h2>
                   <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Total Net Worth</span>
                 </div>
-                <div className="flex flex-wrap gap-4 mt-8">
+                <div className="flex flex-wrap gap-4 mt-4">
                   <ActionButton icon="add" label="Receive" color="green" />
                   <ActionButton icon="send" label="Send" color="blue" />
                   <ActionButton icon="swap_horiz" label="Convert" color="purple" />
@@ -189,35 +189,14 @@ const WalletPage: React.FC = () => {
                     Stake your QIE here to earn "vQIE" voting power. This allows you to vote on protocol changes and earn bonus interest.
                   </p>
                 </div>
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-white/60">Staked Balance</span>
-                    <span className="text-white font-bold">0.00 QIE</span>
-                  </div>
-                  <div className="w-full bg-[#0f0518] rounded-full h-1.5">
-                    <div className="bg-white/10 h-1.5 rounded-full" style={{ width: '0%' }}></div>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-white/60">Rewards Earned</span>
-                    <span className="text-green-400 font-bold">$0.00</span>
-                  </div>
-                </div>
+
                 <button className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-semibold text-sm">
                   Stake My QIE
                 </button>
               </div>
 
-              {/* TESTNET FAUCET */}
-              <div className="mt-8 pt-8 border-t border-white/10">
-                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Testnet Faucet</h3>
-                    <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded font-bold uppercase">Dev Only</span>
-                 </div>
-                 <div className="grid grid-cols-2 gap-3">
-                    <FaucetButton symbol="USDT" address={CONTRACT_ADDRESSES.USDT} />
-                    <FaucetButton symbol="WBTC" address={CONTRACT_ADDRESSES.WBTC} />
-                 </div>
-              </div>
+
+              {/* TESTNET FAUCET MOVED FROM HERE */}
             </div>
           </div>
 
@@ -256,29 +235,16 @@ const WalletPage: React.FC = () => {
             </div>
 
             <div className="bg-[#1e0b2e]/60 border border-white/10 rounded-2xl p-6 shadow-xl h-fit">
-              <h3 className="text-lg font-bold text-white mb-1">Send Funds</h3>
-              <p className="text-xs text-white/40 mb-6">Transfer crypto to another address.</p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-medium text-white/60 mb-1.5 uppercase tracking-wider">Recipient Wallet Address</label>
-                  <input className="w-full bg-[#0f0518] border border-white/10 rounded-xl p-3 text-white placeholder-white/20 text-xs font-mono" placeholder="0x..." />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-medium text-white/60 mb-1.5 uppercase tracking-wider">Amount to Send (QIE)</label>
-                  <div className="relative">
-                    <input className="w-full bg-[#0f0518] border border-white/10 rounded-xl p-3 text-white placeholder-white/20 text-sm" placeholder="0.00" type="number" />
-                    <button className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-pink-400 font-bold">MAX</button>
-                  </div>
-                  <p className="text-[10px] text-white/20 mt-1">Available: {qieBalance} QIE</p>
-                </div>
-                <button 
-                  onClick={handleSend}
-                  className="w-full py-3.5 mt-2 rounded-xl bg-gradient-primary text-white font-bold text-sm shadow-lg hover:scale-[1.02] transition-all"
-                >
-                  Confirm Transaction
-                </button>
-              </div>
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-white">Testnet Faucet</h3>
+                  <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded font-bold uppercase">Dev Only</span>
+               </div>
+               <p className="text-xs text-white/40 mb-6">Mint free tokens to test the protocol.</p>
+               
+               <div className="space-y-4">
+                  <FaucetButton symbol="USDT" address={CONTRACT_ADDRESSES.USDT} />
+                  <FaucetButton symbol="WBTC" address={CONTRACT_ADDRESSES.WBTC} />
+               </div>
             </div>
           </div>
         </>
