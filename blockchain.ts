@@ -5,15 +5,15 @@
  */
 
 export const QIE_CHAIN_CONFIG = {
-    chainId: '0x1c', // Placeholder for QIE Chain ID
+    chainId: import.meta.env.VITE_QIE_CHAIN_ID,
     chainName: 'QIE Mainnet',
     nativeCurrency: {
         name: 'QIE Coin',
         symbol: 'QIE',
         decimals: 18
     },
-    rpcUrls: ['https://rpc.qiechain.io'], // Placeholder
-    blockExplorerUrls: ['https://explorer.qiechain.io']
+    rpcUrls: [import.meta.env.VITE_QIE_RPC_URL],
+    blockExplorerUrls: [import.meta.env.VITE_QIE_EXPLORER_URL]
 };
 
 export const CONTRACT_ADDRESSES = {

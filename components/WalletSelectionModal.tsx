@@ -1,38 +1,43 @@
 
 import React from 'react';
 import { useAuth, WalletType } from '../context/AuthContext';
+import metamaskIcon from '../assets/metamask.svg';
+import coinbaseIcon from '../assets/coinbase.png';
+import trustIcon from '../assets/trustwallet.png';
+import qieIcon from '../assets/qie-wallet.png';
 
 const WalletSelectionModal: React.FC = () => {
   const { isWalletModalOpen, closeWalletModal, connectWallet } = useAuth();
 
   if (!isWalletModalOpen) return null;
 
+
   const wallets: { id: WalletType; name: string; icon: string; color: string; desc: string }[] = [
     { 
       id: 'metamask', 
       name: 'MetaMask', 
-      icon: 'https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg', 
+      icon: metamaskIcon, 
       color: 'from-orange-500/20 to-orange-600/20',
       desc: 'The most popular crypto wallet extension.'
     },
     { 
       id: 'coinbase', 
       name: 'Coinbase Wallet', 
-      icon: 'https://avatars.githubusercontent.com/u/18060234?s=280&v=4', 
+      icon: coinbaseIcon, 
       color: 'from-blue-500/20 to-blue-600/20',
       desc: 'Securely manage your assets with Coinbase.'
     },
     { 
       id: 'trust', 
       name: 'Trust Wallet', 
-      icon: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png', 
+      icon: trustIcon, 
       color: 'from-blue-400/20 to-blue-500/20',
       desc: 'Mobile-first wallet for multichain assets.'
     },
     { 
       id: 'qie', 
       name: 'QIE Wallet', 
-      icon: 'https://play-lh.googleusercontent.com/BPg31CmP9i6Dpo0EZQjGceZGXe5uaKOShtz52vY5zW1_e0SpQBarSkP6TUIFk4WWkJI',
+      icon: qieIcon,
       color: 'from-purple-500/20 to-purple-600/20',
       desc: 'Native optimized wallet for QIE Chain.'
     }

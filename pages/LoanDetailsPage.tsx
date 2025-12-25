@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import ProcessingModal from '../components/ProcessingModal';
 

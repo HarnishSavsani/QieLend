@@ -1,5 +1,6 @@
 
 import React from 'react';
+import techHero from '../assets/tech-hero.jpg';
 
 const TechPage: React.FC = () => {
   return (
@@ -38,9 +39,9 @@ const TechPage: React.FC = () => {
             </div>
             <div className="glass-panel p-1 rounded-3xl overflow-hidden shadow-2xl">
               <img 
-                src="https://images.unsplash.com/photo-1639762681057-408e52192e55?auto=format&fit=crop&q=80&w=1000" 
-                className="w-full rounded-[1.4rem] opacity-60 grayscale hover:grayscale-0 transition-all duration-700" 
-                alt="Architecture" 
+                src={techHero}
+                alt="QIE Layer-1 Topology" 
+                className="w-full h-auto rounded-lg"
               />
             </div>
           </div>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import { MOCK_ASSETS, MOCK_TRANSACTIONS } from '../constants';
 

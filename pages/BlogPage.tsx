@@ -1,12 +1,17 @@
 
 import React from 'react';
 
+import blog1 from '../assets/blog-1.jpg';
+import blog2 from '../assets/blog-2.jpg';
+import blog3 from '../assets/blog-3.jpg';
+import blog4 from '../assets/blog-4.jpg';
+
 const BlogPage: React.FC = () => {
   const posts = [
-    { title: "QieLend v2: The Road to Decentralized Governance", date: "Oct 28, 2024", cat: "Product", img: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&q=80&w=400" },
-    { title: "Understanding LTV and Liquidation Protection", date: "Oct 15, 2024", cat: "Education", img: "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?auto=format&fit=crop&q=80&w=400" },
-    { title: "Strategic Partnership with QIE Chain Foundation", date: "Sep 22, 2024", cat: "News", img: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=400" },
-    { title: "The Rise of P2P Crypto Lending in 2024", date: "Sep 05, 2024", cat: "Industry", img: "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?auto=format&fit=crop&q=80&w=400" },
+    { title: "QieLend v2: The Road to Decentralized Governance", date: "Oct 28, 2024", cat: "Product", img: blog1 },
+    { title: "Understanding LTV and Liquidation Protection", date: "Oct 15, 2024", cat: "Education", img: blog2 },
+    { title: "Strategic Partnership with QIE Chain Foundation", date: "Sep 22, 2024", cat: "News", img: blog3 },
+    { title: "The Rise of P2P Crypto Lending in 2024", date: "Sep 05, 2024", cat: "Industry", img: blog4 },
   ];
 
   return (

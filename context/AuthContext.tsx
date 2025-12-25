@@ -8,9 +8,10 @@ import {
   GoogleAuthProvider, 
   signInWithPopup,
   sendPasswordResetEmail
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+} from "firebase/auth";
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from '../firebase';
+import defaultAvatar from '../assets/default-avatar.svg';
 
 interface UserProfile {
   id: string;
@@ -111,7 +112,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         firstName,
         lastName,
         email,
-        avatar: `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${firstName}`,
+        avatar: defaultAvatar,
         trustScore: 100,
         createdAt: new Date().toISOString()
       };
@@ -136,7 +137,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           firstName: names[0],
           lastName: names.length > 1 ? names[names.length - 1] : "",
           email: result.user.email || "",
-          avatar: result.user.photoURL || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${names[0]}`,
+          avatar: result.user.photoURL || defaultAvatar,
           trustScore: 100,
           createdAt: new Date().toISOString()
         };

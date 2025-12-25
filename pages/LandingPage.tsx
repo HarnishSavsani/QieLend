@@ -1,6 +1,6 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import networkDiagram from '../assets/blog-1.jpg';
 import { useAuth } from '../context/AuthContext';
 
 const LandingPage: React.FC = () => {
@@ -163,7 +163,7 @@ const LandingPage: React.FC = () => {
           
           <div className="flex-1 relative">
             <div className="relative z-10 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-              <img src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&q=80&w=1000" alt="QIE Network Diagram" className="w-full h-auto opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700" />
+              <img src={networkDiagram} alt="QIE Network Diagram" className="w-full h-auto opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700" />
               <div className="absolute inset-0 bg-gradient-to-t from-background-dark/80 via-transparent to-transparent"></div>
               
               {/* TVL Card Overlay */}

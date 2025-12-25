@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import defaultAvatar from '../assets/default-avatar.svg';
 
 type TabType = 'profile' | 'security' | 'notifications' | 'wallets';
 
@@ -32,7 +33,7 @@ const SettingsPage: React.FC = () => {
     setIsSaving(true);
     setSaveMessage('');
     try {
-      const newAvatar = `https://api.dicebear.com/7.x/thumbs/svg?seed=${firstName}${lastName}`;
+      const newAvatar = defaultAvatar;
       await updateProfile({ firstName, lastName, avatar: newAvatar });
       setSaveMessage('Profile and Avatar updated!');
       setTimeout(() => setSaveMessage(''), 3000);
