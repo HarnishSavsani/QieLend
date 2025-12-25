@@ -88,8 +88,30 @@ npm run dev
 3. Go to **MetaMask > Settings > Advanced > Clear Activity Tab Data**.
 4. _If you don't do this, transactions will get stuck._
 
-**Step 5: "Ghost" Data Warning**
-
-- **The Problem**: Your local database (Firebase) persists, but the blockchain resets to zero.
-- **The Result**: You might see old "Active" loans on your Dashboard that don't exist on the blockchain anymore.
 - **The Fix**: Ignore old loans or manually delete them from Firebase Console if they get confusing. Start fresh with "New Loan Request".
+
+## 🚀 Migrating to QIE Testnet (Public)
+
+The app is now configured for **QIE Testnet** (Chain ID: 1983). To go live:
+
+1.  **Configure Account**:
+
+    - Open `.env`.
+    - Add your wallet's Private Key: `PRIVATE_KEY=0x...` (Must have QIE for gas).
+
+2.  **Deploy Contracts**:
+
+    ```bash
+    cd smart-contracts
+    npx hardhat run scripts/deploy.ts --network qie_testnet
+    ```
+
+3.  **Update Config**:
+
+    - Copy the deployed addresses from the terminal output.
+    - Open `src/config/blockchain.ts`.
+    - Replace the placeholder values in `CONTRACT_ADDRESSES` with your real addresses.
+
+4.  **Run App**:
+    - `npm run dev`
+    - Connect your wallet (ensure it's on QIE Testnet).

@@ -4,9 +4,9 @@
  * Setting the stage for Smart Contract integration.
  */
 
-// For local development, we enforce these values to avoid .env conflicts
-const CHAIN_ID = '31337';
-const RPC_URL = 'http://127.0.0.1:8545';
+// QIE Testnet Configuration
+const CHAIN_ID = '1983';
+const RPC_URL = 'https://rpc1testnet.qie.digital';
 
 /* 
 // Previous dynamic logic (kept for reference when moving to prod)
@@ -18,23 +18,23 @@ const RPC_URL = CHAIN_ID === '31337'
 
 export const QIE_CHAIN_CONFIG = {
     chainId: CHAIN_ID,
-    chainName: 'QIE Localhost',
+    chainName: 'QIE Testnet',
     nativeCurrency: {
         name: 'QIE Coin',
         symbol: 'QIE',
         decimals: 18
     },
     rpcUrls: [RPC_URL],
-    blockExplorerUrls: []
+    blockExplorerUrls: ['https://testnet.qiescan.com'] // Common guess, or leave empty if unsure
 };
 
 export const CONTRACT_ADDRESSES = {
-    // Localhost Deployments (forcing new addresses to bypass stale .env)
-    LendingPool: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788', // import.meta.env.VITE_CONTRACT_LENDING_POOL
-    TrustToken: '0x0165878A594ca255338adfa4d48449f69242Eb8F', // import.meta.env.VITE_CONTRACT_TRUST_SCORE
-    USDT: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',        // import.meta.env.VITE_CONTRACT_USDT
-    WBTC: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',        // import.meta.env.VITE_CONTRACT_WBTC
-    QIE: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318'          // import.meta.env.VITE_CONTRACT_QIE
+    // TODO: DEPLOY CONTRACTS TO QIE TESTNET AND UPDATE THESE ADDRESSES
+    LendingPool: 'YOUR_DEPLOYED_LENDING_POOL_ADDRESS', 
+    TrustToken: 'YOUR_DEPLOYED_TRUST_SCORE_ADDRESS', 
+    USDT: 'YOUR_DEPLOYED_USDT_ADDRESS',
+    WBTC: 'YOUR_DEPLOYED_WBTC_ADDRESS',
+    QIE: 'YOUR_DEPLOYED_QIE_ADDRESS'
 };
 
 // Generic ERC20 ABI

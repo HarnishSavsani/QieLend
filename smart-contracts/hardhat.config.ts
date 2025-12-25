@@ -22,7 +22,7 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
     qie_testnet: {
-      url: "https://testnetqierpc1.digital/",
+      url: "https://rpc1testnet.qie.digital",
       chainId: 1983,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
