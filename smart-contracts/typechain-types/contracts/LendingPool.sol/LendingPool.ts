@@ -31,6 +31,8 @@ export declare namespace LendingPool {
     amount: BigNumberish;
     interest: BigNumberish;
     duration: BigNumberish;
+    collateralToken: AddressLike;
+    collateralAmount: BigNumberish;
     startTime: BigNumberish;
     funded: boolean;
     repaid: boolean;
@@ -44,6 +46,8 @@ export declare namespace LendingPool {
     amount: bigint,
     interest: bigint,
     duration: bigint,
+    collateralToken: string,
+    collateralAmount: bigint,
     startTime: bigint,
     funded: boolean,
     repaid: boolean,
@@ -55,6 +59,8 @@ export declare namespace LendingPool {
     amount: bigint;
     interest: bigint;
     duration: bigint;
+    collateralToken: string;
+    collateralAmount: bigint;
     startTime: bigint;
     funded: boolean;
     repaid: boolean;
@@ -93,7 +99,13 @@ export interface LendingPoolInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "createLoanRequest",
-    values: [BigNumberish, BigNumberish, BigNumberish]
+    values: [
+      BigNumberish,
+      BigNumberish,
+      BigNumberish,
+      AddressLike,
+      BigNumberish
+    ]
   ): string;
   encodeFunctionData(
     functionFragment: "fundLoan",
@@ -158,13 +170,23 @@ export namespace LoanCreatedEvent {
   export type InputTuple = [
     loanId: BigNumberish,
     borrower: AddressLike,
-    amount: BigNumberish
+    amount: BigNumberish,
+    collateralToken: AddressLike,
+    collateralAmount: BigNumberish
   ];
-  export type OutputTuple = [loanId: bigint, borrower: string, amount: bigint];
+  export type OutputTuple = [
+    loanId: bigint,
+    borrower: string,
+    amount: bigint,
+    collateralToken: string,
+    collateralAmount: bigint
+  ];
   export interface OutputObject {
     loanId: bigint;
     borrower: string;
     amount: bigint;
+    collateralToken: string;
+    collateralAmount: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -273,7 +295,13 @@ export interface LendingPool extends BaseContract {
   >;
 
   createLoanRequest: TypedContractMethod<
-    [_amount: BigNumberish, _duration: BigNumberish, _interest: BigNumberish],
+    [
+      _amount: BigNumberish,
+      _duration: BigNumberish,
+      _interest: BigNumberish,
+      _collateralToken: AddressLike,
+      _collateralAmount: BigNumberish
+    ],
     [void],
     "nonpayable"
   >;
@@ -296,6 +324,8 @@ export interface LendingPool extends BaseContract {
         bigint,
         bigint,
         bigint,
+        string,
+        bigint,
         bigint,
         boolean,
         boolean,
@@ -307,6 +337,8 @@ export interface LendingPool extends BaseContract {
         amount: bigint;
         interest: bigint;
         duration: bigint;
+        collateralToken: string;
+        collateralAmount: bigint;
         startTime: bigint;
         funded: boolean;
         repaid: boolean;
@@ -342,7 +374,13 @@ export interface LendingPool extends BaseContract {
   getFunction(
     nameOrSignature: "createLoanRequest"
   ): TypedContractMethod<
-    [_amount: BigNumberish, _duration: BigNumberish, _interest: BigNumberish],
+    [
+      _amount: BigNumberish,
+      _duration: BigNumberish,
+      _interest: BigNumberish,
+      _collateralToken: AddressLike,
+      _collateralAmount: BigNumberish
+    ],
     [void],
     "nonpayable"
   >;
@@ -368,6 +406,8 @@ export interface LendingPool extends BaseContract {
         bigint,
         bigint,
         bigint,
+        string,
+        bigint,
         bigint,
         boolean,
         boolean,
@@ -379,6 +419,8 @@ export interface LendingPool extends BaseContract {
         amount: bigint;
         interest: bigint;
         duration: bigint;
+        collateralToken: string;
+        collateralAmount: bigint;
         startTime: bigint;
         funded: boolean;
         repaid: boolean;
@@ -443,7 +485,7 @@ export interface LendingPool extends BaseContract {
   >;
 
   filters: {
-    "LoanCreated(uint256,address,uint256)": TypedContractEvent<
+    "LoanCreated(uint256,address,uint256,address,uint256)": TypedContractEvent<
       LoanCreatedEvent.InputTuple,
       LoanCreatedEvent.OutputTuple,
       LoanCreatedEvent.OutputObject

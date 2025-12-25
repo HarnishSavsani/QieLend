@@ -6,9 +6,18 @@ interface ProcessingModalProps {
   onClose: () => void;
   title: string;
   subtitle: string;
+  successTitle?: string;
+  successMessage?: string;
 }
 
-const ProcessingModal: React.FC<ProcessingModalProps> = ({ isOpen, onClose, title, subtitle }) => {
+const ProcessingModal: React.FC<ProcessingModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  subtitle,
+  successTitle = 'Settled!',
+  successMessage = 'Transaction confirmed on QIE Chain'
+}) => {
   const [showCheck, setShowCheck] = useState(false);
 
   useEffect(() => {
@@ -75,10 +84,10 @@ const ProcessingModal: React.FC<ProcessingModalProps> = ({ isOpen, onClose, titl
         </div>
 
         <h2 className="text-2xl font-black text-white mb-2 animate-in slide-in-from-bottom-2 fade-in duration-700">
-          {showCheck ? 'Settled!' : title}
+          {showCheck ? successTitle : title}
         </h2>
         <p className="text-white/50 text-sm animate-in slide-in-from-bottom-4 fade-in duration-1000">
-          {showCheck ? 'Transaction confirmed on QIE Chain' : subtitle}
+          {showCheck ? successMessage : subtitle}
         </p>
 
         {showCheck && (

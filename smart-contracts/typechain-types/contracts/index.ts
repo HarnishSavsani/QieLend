@@ -3,4 +3,5 @@
 /* eslint-disable */
 import type * as lendingPoolSol from "./LendingPool.sol";
 export type { lendingPoolSol };
+export type { MockToken } from "./MockToken";
 export type { TrustScore } from "./TrustScore";

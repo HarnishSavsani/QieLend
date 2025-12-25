@@ -2,4 +2,5 @@
 /* tslint:disable */
 /* eslint-disable */
 export * as lendingPoolSol from "./LendingPool.sol";
+export { MockToken__factory } from "./MockToken__factory";
 export { TrustScore__factory } from "./TrustScore__factory";

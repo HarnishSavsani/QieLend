@@ -1,14 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
 import { collection, onSnapshot, query, where, updateDoc, doc } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { parseEther } from 'ethers';
 
 const LendPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, lendingPoolContract, showToast } = useAuth();
   const [loans, setLoans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fundingLoanId, setFundingLoanId] = useState<string | null>(null);
 
   useEffect(() => {
     // Listen to real-time updates for "pending" loans
@@ -31,19 +32,43 @@ const LendPage: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const handleFundLoan = async (loanId: string) => {
-    if (!user) return alert("Please log in to fund loans.");
+  const handleFundLoan = async (loan: any) => {
+    if (!user) return showToast("Please log in to fund loans.", "error");
+    if (!lendingPoolContract) return showToast("Wallet connection failed.", "error");
+    if (loan.contractLoanId === undefined) return showToast("Error: Invalid Contract Loan ID.", "error");
+
+    setFundingLoanId(loan.id);
     try {
-      const loanRef = doc(db, "loans", loanId);
+      showToast(`Funding loan for ${loan.amount} ${loan.asset}... Please sign.`, "info");
+      
+      // Smart Contract Call
+      // IMPORTANT: Currently the contract treats all 'amount' as Native Token (QIE) Wei values
+      // If the loan was created as USDT, this will technically require sending QIE. 
+      // For this version, we assume the lender is sending QIE equivalent.
+      const amountWei = parseEther(loan.amount.toString());
+      
+      const tx = await lendingPoolContract.fundLoan(loan.contractLoanId, { value: amountWei });
+      await tx.wait();
+
+      // Update Firebase
+      const loanRef = doc(db, "loans", loan.id);
       await updateDoc(loanRef, {
         status: 'active',
         lenderId: user.id,
-        lenderName: `${user.firstName} ${user.lastName}`
+        lenderName: `${user.firstName} ${user.lastName}`,
+        fundedAt: new Date().toISOString()
       });
-      alert("Loan funded successfully! You will now earn interest.");
-    } catch (err) {
+      
+      showToast("Loan funded successfully! You are now earning interest.", "success");
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to fund loan.");
+      if (err.code === 'ACTION_REJECTED') {
+          showToast("Funding cancelled.", "info");
+      } else {
+          showToast("Failed to fund loan: " + (err.reason || err.message), "error");
+      }
+    } finally {
+        setFundingLoanId(null);
     }
   };
 
@@ -103,18 +128,22 @@ const LendPage: React.FC = () => {
                         <h3 className={`text-lg font-bold ${loan.ltv > 60 ? 'text-yellow-400' : 'text-green-400'}`}>{loan.ltv < 40 ? 'LOW' : loan.ltv < 65 ? 'MED' : 'HIGH'}</h3>
                       </div>
                     </div>
-                    <div className="shrink-0 w-full md:w-auto">
-                      <Link 
-                        to={`/loan/${loan.id}`}
-                        className="w-full block text-center px-8 py-3 rounded-xl bg-gradient-primary text-white font-bold shadow-lg hover:shadow-pink-500/40 transition-all"
+                    <div className="shrink-0 w-full md:w-auto flex flex-col gap-2">
+                      <button 
+                        onClick={() => handleFundLoan(loan)}
+                        disabled={fundingLoanId === loan.id}
+                        className="w-full block text-center px-8 py-3 rounded-xl bg-gradient-primary text-white font-bold shadow-lg hover:shadow-pink-500/40 transition-all disabled:opacity-50"
                       >
-                        Details
-                      </Link>
+                         {fundingLoanId === loan.id ? "Funding..." : "Fund Loan"}
+                      </button>
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                        <span className="text-white/60 text-xs">Collateral: <span className="text-white font-bold">{loan.collateralAmount} {loan.collateralAsset}</span></span>
+                       {loan.contractLoanId !== undefined && (
+                           <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/30">ID: #{loan.contractLoanId}</span>
+                       )}
                     </div>
                     <div className="hidden md:block">
                       <span className="text-white/40 text-[10px]">Borrower: <span className="text-white font-bold">{loan.borrowerName}</span></span>

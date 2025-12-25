@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -15,9 +16,11 @@ contract LendingPool is ReentrancyGuard, Ownable {
         uint256 id;
         address borrower;
         address lender;
-        uint256 amount;
-        uint256 interest; // Total interest amount
-        uint256 duration; // In seconds
+        uint256 amount;     // Principal (e.g. QIE or Stablecoin if expanded)
+        uint256 interest;   // Total interest amount
+        uint256 duration;   // In seconds
+        address collateralToken; // Token used as collateral
+        uint256 collateralAmount;
         uint256 startTime;
         bool funded;
         bool repaid;
@@ -30,7 +33,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
     // Address of the TrustScore contract
     ITrustScore public trustScoreContract;
 
-    event LoanCreated(uint256 indexed loanId, address indexed borrower, uint256 amount);
+    event LoanCreated(uint256 indexed loanId, address indexed borrower, uint256 amount, address collateralToken, uint256 collateralAmount);
     event LoanFunded(uint256 indexed loanId, address indexed lender);
     event LoanRepaid(uint256 indexed loanId, address indexed borrower);
     event LoanDefaulted(uint256 indexed loanId);
@@ -40,9 +43,22 @@ contract LendingPool is ReentrancyGuard, Ownable {
     }
 
     // 1. Borrower creates a loan request
-    function createLoanRequest(uint256 _amount, uint256 _duration, uint256 _interest) external nonReentrant {
+    function createLoanRequest(
+        uint256 _amount, 
+        uint256 _duration, 
+        uint256 _interest,
+        address _collateralToken,
+        uint256 _collateralAmount
+    ) external nonReentrant {
         require(_amount > 0, "Amount must be > 0");
         require(_duration > 0, "Duration must be > 0");
+        require(_collateralAmount > 0, "Collateral must be > 0");
+        require(_collateralToken != address(0), "Invalid collateral token");
+
+        // LOCK COLLATERAL: Transfer from borrower to this contract
+        // NOTE: Borrower must have approved this contract to spend _collateralAmount
+        bool success = IERC20(_collateralToken).transferFrom(msg.sender, address(this), _collateralAmount);
+        require(success, "Collateral transfer failed. Check allowance.");
         
         uint256 loanId = nextLoanId++;
         loans[loanId] = Loan({
@@ -52,13 +68,15 @@ contract LendingPool is ReentrancyGuard, Ownable {
             amount: _amount,
             interest: _interest,
             duration: _duration,
+            collateralToken: _collateralToken,
+            collateralAmount: _collateralAmount,
             startTime: 0,
             funded: false,
             repaid: false,
             defaulted: false
         });
 
-        emit LoanCreated(loanId, msg.sender, _amount);
+        emit LoanCreated(loanId, msg.sender, _amount, _collateralToken, _collateralAmount);
     }
 
     // 2. Lender funds the loan
@@ -106,6 +124,9 @@ contract LendingPool is ReentrancyGuard, Ownable {
         if (block.timestamp > loan.startTime + loan.duration) {
             loan.defaulted = true;
             
+            // Transfer Collateral to Lender
+            require(IERC20(loan.collateralToken).transfer(loan.lender, loan.collateralAmount), "Collateral transfer failed");
+
             // Decrease Trust Score
             try trustScoreContract.updateScore(loan.borrower, -20) {} catch {}
             

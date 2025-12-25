@@ -1,15 +1,18 @@
 
 import React from 'react';
 
+import { SUPPORTED_ASSETS } from '../config/constants';
+
 const RatesPage: React.FC = () => {
-  const rates = [
-    { asset: 'QIE', supply: '18.2%', borrow: '2.5%', utilization: '42%' },
-    { asset: 'USDT', supply: '12.5%', borrow: '14.1%', utilization: '88%' },
-    { asset: 'USDC', supply: '11.8%', borrow: '13.4%', utilization: '85%' },
-    { asset: 'BTC', supply: '4.2%', borrow: '6.5%', utilization: '21%' },
-    { asset: 'ETH', supply: '5.1%', borrow: '7.2%', utilization: '28%' },
-    { asset: 'DAI', supply: '10.5%', borrow: '12.0%', utilization: '74%' },
-  ];
+    // Generate rates based on supported assets to ensure consistency with the rest of the app
+  const rates = SUPPORTED_ASSETS.map(asset => ({
+      asset: asset.symbol,
+      icon: asset.icon,
+      // Mock protocol data for now
+      supply: (Math.random() * 5 + 8).toFixed(1) + '%',
+      borrow: (Math.random() * 5 + 10).toFixed(1) + '%',
+      utilization: Math.floor(Math.random() * 60 + 20) + '%'
+  }));
 
   return (
     <div className="bg-background-dark pb-24">
@@ -34,7 +37,7 @@ const RatesPage: React.FC = () => {
                     <tr key={i} className="group hover:bg-white/[0.02] transition-colors">
                       <td className="py-6 px-8">
                         <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-full bg-white/5 flex items-center justify-center font-bold text-white text-xs">{r.asset}</div>
+                          <span className="material-symbols-outlined text-white/50">{r.icon}</span>
                           <span className="font-bold text-white">{r.asset}</span>
                         </div>
                       </td>

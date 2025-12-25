@@ -9,11 +9,12 @@ export const COLORS = {
   surface: "#1e0b2e",
 };
 
-export const MOCK_ASSETS = [
-  { id: '1', name: 'QIE Coin', symbol: 'QIE', balance: 14250.00, valueUsd: 21375.00, network: 'QIE Chain', icon: 'diamond' },
-  { id: '2', name: 'Bitcoin', symbol: 'BTC', balance: 0.4521, valueUsd: 15823.50, network: 'Bitcoin', icon: 'currency_bitcoin' },
-  { id: '3', name: 'Tether', symbol: 'USDT', balance: 5395.32, valueUsd: 5395.32, network: 'QIE Chain', icon: 'monetization_on' },
-  { id: '4', name: 'Ethereum', symbol: 'ETH', balance: 0.00, valueUsd: 0.00, network: 'Ethereum', icon: 'token' },
+export const SUPPORTED_ASSETS = [
+  { symbol: 'USDT', name: 'Tether', icon: 'monetization_on', color: 'text-green-400', coingeckoId: 'tether', defaultPrice: 1.00 },
+  { symbol: 'USDC', name: 'USD Coin', icon: 'payments', color: 'text-blue-400', coingeckoId: 'usd-coin', defaultPrice: 1.00 },
+  { symbol: 'QIE', name: 'QIE Coin', icon: 'diamond', color: 'text-purple-400', coingeckoId: 'qie-coin', defaultPrice: 0.05 }, // Fallback for QIE
+  { symbol: 'BTC', name: 'Bitcoin', icon: 'currency_bitcoin', color: 'text-yellow-500', coingeckoId: 'bitcoin', defaultPrice: 65000.00 },
+  { symbol: 'ETH', name: 'Ethereum', icon: 'token', color: 'text-blue-500', coingeckoId: 'ethereum', defaultPrice: 3500.00 },
 ];
 
 export const MOCK_TRANSACTIONS = [

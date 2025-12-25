@@ -1,10 +1,73 @@
 
 import React, { useState, useEffect } from 'react';
-import { MOCK_ASSETS } from '../config/constants';
+import { SUPPORTED_ASSETS } from '../config/constants';
 import { useAuth } from '../context/AuthContext';
+import { formatEther, parseEther, JsonRpcProvider, Contract } from 'ethers';
+import { QIE_CHAIN_CONFIG, CONTRACT_ADDRESSES, ERC20_ABI } from '../config/blockchain';
 
-import { formatEther, JsonRpcProvider } from 'ethers';
-import { QIE_CHAIN_CONFIG } from '../config/blockchain';
+// Helper Component for Faucet
+const FaucetButton = ({ symbol, address }: { symbol: string, address: string }) => {
+    const { signer, showToast } = useAuth();
+    const [loading, setLoading] = useState(false);
+
+    const mint = async () => {
+        if (!signer) return showToast("Connect wallet first", "error");
+        setLoading(true);
+        try {
+            const contract = new Contract(address, ERC20_ABI, signer);
+            // Mint 1000 Tokens (assuming 18 decimals)
+            const tx = await contract.mint(await signer.getAddress(), parseEther("1000"));
+            await tx.wait();
+            showToast(`Minted 1000 ${symbol} successfully!`, "success");
+        } catch (e: any) {
+            console.error(e);
+            showToast("Mint failed: " + e.message, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const addToWallet = async () => {
+        const ethereum = (window as any).ethereum;
+        if (!ethereum) return showToast("MetaMask not found", "error");
+        try {
+            await ethereum.request({
+                method: 'wallet_watchAsset',
+                params: {
+                    type: 'ERC20',
+                    options: {
+                        address: address,
+                        symbol: symbol,
+                        decimals: 18,
+                    },
+                },
+            });
+            showToast(`${symbol} added to wallet!`, "success");
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-2">
+            <button 
+                onClick={mint}
+                disabled={loading}
+                className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all flex items-center justify-center gap-2"
+            >
+                {loading ? <span className="animate-spin material-symbols-outlined text-[14px]">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">water_drop</span>}
+                Get {symbol}
+            </button>
+            <button 
+                onClick={addToWallet}
+                className="size-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/40 hover:text-orange-400 transition-colors"
+                title="Add to MetaMask"
+            >
+                <span className="material-symbols-outlined text-[16px]">add_circle</span>
+            </button>
+        </div>
+    );
+};
 
 const WalletPage: React.FC = () => {
   const { user, openWalletModal, showToast, provider } = useAuth();
@@ -41,7 +104,7 @@ const WalletPage: React.FC = () => {
     showToast("Transaction signing triggered. Confirm in your wallet extension.", "info");
   };
 
-  // Demo valuation: 1 QIE = $1.00 (Simplifying for clarity)
+  // Demo valuation
   const totalUsdValuation = (parseFloat(qieBalance) * 1.0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
@@ -142,6 +205,18 @@ const WalletPage: React.FC = () => {
                 <button className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-semibold text-sm">
                   Stake My QIE
                 </button>
+              </div>
+
+              {/* TESTNET FAUCET */}
+              <div className="mt-8 pt-8 border-t border-white/10">
+                 <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Testnet Faucet</h3>
+                    <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded font-bold uppercase">Dev Only</span>
+                 </div>
+                 <div className="grid grid-cols-2 gap-3">
+                    <FaucetButton symbol="USDT" address={CONTRACT_ADDRESSES.USDT} />
+                    <FaucetButton symbol="WBTC" address={CONTRACT_ADDRESSES.WBTC} />
+                 </div>
               </div>
             </div>
           </div>

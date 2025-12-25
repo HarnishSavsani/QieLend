@@ -6,19 +6,15 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import ProcessingModal from '../components/ProcessingModal';
 
-const SUPPORTED_ASSETS = [
-  { symbol: 'USDT', name: 'Tether', icon: 'monetization_on', color: 'text-green-400', price: 1 },
-  { symbol: 'USDC', name: 'USD Coin', icon: 'payments', color: 'text-blue-400', price: 1 },
-  { symbol: 'QIE', name: 'QIE Coin', icon: 'diamond', color: 'text-purple-400', price: 1.5 },
-  { symbol: 'BTC', name: 'Bitcoin', icon: 'currency_bitcoin', color: 'text-yellow-500', price: 65000 },
-  { symbol: 'ETH', name: 'Ethereum', icon: 'token', color: 'text-blue-500', price: 3500 },
-];
+import { SUPPORTED_ASSETS } from '../config/constants';
+import { fetchCryptoPrices, AssetPriceMap } from '../services/coingecko';
+import { parseEther, Contract, formatEther } from 'ethers';
+import { ERC20_ABI, CONTRACT_ADDRESSES } from '../config/blockchain';
 
-  /* New Import */
-  import { parseEther } from 'ethers';
+import confetti from 'canvas-confetti';
 
-  const BorrowPage: React.FC = () => {
-  const { user, showToast, lendingPoolContract } = useAuth(); // Added lendingPoolContract
+const BorrowPage: React.FC = () => {
+  const { user, showToast, lendingPoolContract, signer } = useAuth(); 
   const navigate = useNavigate();
   
   const [borrowAmount, setBorrowAmount] = useState(5000);
@@ -29,18 +25,54 @@ const SUPPORTED_ASSETS = [
   const [duration, setDuration] = useState('30');
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processStep, setProcessStep] = useState(''); // 'approving' | 'creating' | ''
 
+  const [prices, setPrices] = useState<AssetPriceMap>({});
+  const [userBalances, setUserBalances] = useState<{[key: string]: number}>({});
   const [showBorrowDropdown, setShowBorrowDropdown] = useState(false);
   const [showCollateralDropdown, setShowCollateralDropdown] = useState(false);
 
-  const borrowPrice = SUPPORTED_ASSETS.find(a => a.symbol === borrowAsset)?.price || 1;
-  const collateralPrice = SUPPORTED_ASSETS.find(a => a.symbol === collateralAsset)?.price || 1;
+  // Fetch Prices and Balances
+  useEffect(() => {
+      const loadData = async () => {
+          const p = await fetchCryptoPrices();
+          setPrices(p);
+          
+          if (signer) {
+              const balances: {[key: string]: number} = {};
+              const address = await signer.getAddress();
+              
+              // Load balances for all supported assets
+              for (const asset of SUPPORTED_ASSETS) {
+                  try {
+                      if ((CONTRACT_ADDRESSES as any)[asset.symbol]) {
+                          const tokenContract = new Contract((CONTRACT_ADDRESSES as any)[asset.symbol], ERC20_ABI, signer);
+                          const bal = await tokenContract.balanceOf(address);
+                          balances[asset.symbol] = parseFloat(formatEther(bal));
+                      }
+                  } catch (e) {
+                      console.warn(`Failed to fetch balance for ${asset.symbol}`);
+                  }
+              }
+              setUserBalances(balances);
+          }
+      };
+      
+      loadData();
+      const interval = setInterval(loadData, 60000);
+      return () => clearInterval(interval);
+  }, [signer]);
+
+  const borrowPrice = prices[borrowAsset] || SUPPORTED_ASSETS.find(a => a.symbol === borrowAsset)?.defaultPrice || 0;
+  const collateralPrice = prices[collateralAsset] || SUPPORTED_ASSETS.find(a => a.symbol === collateralAsset)?.defaultPrice || 0;
 
   useEffect(() => {
-    const borrowValueUsd = borrowAmount * borrowPrice;
-    const requiredCollateralUsd = borrowValueUsd / (ltv / 100);
-    const calculatedCollateral = requiredCollateralUsd / collateralPrice;
-    setCollateralAmount(parseFloat(calculatedCollateral.toFixed(6)));
+    if (borrowPrice > 0 && collateralPrice > 0) {
+        const borrowValueUsd = borrowAmount * borrowPrice;
+        const requiredCollateralUsd = borrowValueUsd / (ltv / 100);
+        const calculatedCollateral = requiredCollateralUsd / collateralPrice;
+        setCollateralAmount(parseFloat(calculatedCollateral.toFixed(6)));
+    }
   }, [borrowAmount, borrowAsset, ltv, collateralAsset, borrowPrice, collateralPrice]);
 
   const insights = useMemo(() => {
@@ -58,88 +90,138 @@ const SUPPORTED_ASSETS = [
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      showToast("Please login to post loan requests.", 'info');
-      return;
-    }
-    if (borrowAsset === collateralAsset) {
-      showToast("Security Check: Borrow and Collateral assets must be different.", 'error');
-      return;
+    if (!user) return showToast("Please login to post loan requests.", 'info');
+    if (!lendingPoolContract || !signer) return showToast("Wallet not connected.", 'error');
+    if (borrowAsset === collateralAsset) return showToast("Borrow and Collateral assets must be different.", 'error');
+
+    // Check Balance
+    const currentBal = userBalances[collateralAsset] || 0;
+    if (currentBal < collateralAmount) {
+        return showToast(`Insufficient ${collateralAsset} balance. You have ${currentBal.toFixed(4)}.`, 'error');
     }
 
-    if (!lendingPoolContract) {
-        showToast("Wallet not connected. Please connect your wallet.", 'error');
-        return;
-    }
-    
     setIsLoading(true);
+    setProcessStep('approving');
+
     try {
-      // 1. Prepare Blockchain Data
-      // For this demo, we treat 'borrowAmount' as the principal (in Wei/18 decimals)
-      // and calculate interest based on APY.
-      // NOTE: In a real app, 'interest' would be calculated more precisely.
-      const principalWei = parseEther(borrowAmount.toString());
-      const interestAmount = (borrowAmount * (parseFloat(insights.apy) / 100));
-      const interestWei = parseEther(interestAmount.toFixed(18)); 
-      // Convert duration to seconds
-      const durationSeconds = parseInt(duration) * 24 * 60 * 60;
+        const tokenAddress = (CONTRACT_ADDRESSES as any)[collateralAsset];
+        const collateralWei = parseEther(collateralAmount.toFixed(18));
+        
+        // 1. Check Allowance & Approve if needed
+        const tokenContract = new Contract(tokenAddress, ERC20_ABI, signer);
+        const owner = await signer.getAddress();
+        const allowance = await tokenContract.allowance(owner, CONTRACT_ADDRESSES.LendingPool);
+        
+        if (allowance < collateralWei) {
+            showToast(`Authorization required for ${collateralAmount} ${collateralAsset}. Please sign...`, 'info');
+            const approveTx = await tokenContract.approve(CONTRACT_ADDRESSES.LendingPool, collateralWei);
+            await approveTx.wait();
+            showToast("Collateral authorized! Proceeding to Loan Creation...", 'success');
+        }
 
-      showToast("Please sign the transaction...", 'info');
+        setProcessStep('creating');
 
-      // 2. Call Smart Contract
-      const tx = await lendingPoolContract.createLoanRequest(principalWei, durationSeconds, interestWei);
-      
-      showToast("Transaction sent! Waiting for confirmation...", 'info');
-      
-      const receipt = await tx.wait(); // Wait for block
-      
-      showToast("Loan Request Created on Blockchain!", 'success');
-      console.log("Transaction Receipt:", receipt);
+        // 2. Create Loan
+        const principalWei = parseEther(borrowAmount.toString());
+        const interestAmount = (borrowAmount * (parseFloat(insights.apy) / 100));
+        const interestWei = parseEther(interestAmount.toFixed(18)); 
+        const durationSeconds = parseInt(duration) * 24 * 60 * 60;
 
-      // 3. Save to Firebase (Indexer)
-      // We store the txHash for reference
-      await addDoc(collection(db, "loans"), {
-        borrowerId: user.id,
-        borrowerName: `${user.firstName} ${user.lastName}`,
-        borrowerAvatar: user.avatar,
-        amount: borrowAmount,
-        asset: borrowAsset,
-        collateralAmount: collateralAmount,
-        collateralAsset: collateralAsset,
-        apy: parseFloat(insights.apy),
-        duration: parseInt(duration),
-        ltv: ltv,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        txHash: receipt.hash, // Link to blockchain
-        blockNumber: receipt.blockNumber
-      });
-      
-      setIsProcessing(true); // Trigger Graphite animation
+        showToast("Sign to broadcast Loan Request...", 'info');
+        const tx = await lendingPoolContract.createLoanRequest(
+            principalWei, 
+            durationSeconds, 
+            interestWei,
+            tokenAddress,
+            collateralWei
+        );
+        
+        showToast("Transaction sent! Waiting for confirmation...", 'info');
+        
+        const receipt = await tx.wait();
+        
+        // PARSE LOGS TO GET LOAN ID
+        let contractLoanId = -1;
+        try {
+            const log = receipt.logs.find((l: any) => {
+                try {
+                   return lendingPoolContract.interface.parseLog(l)?.name === 'LoanCreated';
+                } catch { return false; }
+            });
+            if (log) {
+                const parsed = lendingPoolContract.interface.parseLog(log);
+                contractLoanId = Number(parsed?.args[0]); 
+                console.log("Captured Loan ID:", contractLoanId);
+            }
+        } catch (e) {
+            console.error("Failed to parse loan ID logs", e);
+        }
+
+        // 3. Success & Fireworks
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+        
+        // Firebase record
+        await addDoc(collection(db, "loans"), {
+            borrowerId: user.id,
+            borrowerName: `${user.firstName} ${user.lastName}`,
+            borrowerAvatar: user.avatar,
+            amount: borrowAmount,
+            asset: borrowAsset,
+            collateralAmount: collateralAmount,
+            collateralAsset: collateralAsset,
+            apy: parseFloat(insights.apy),
+            duration: parseInt(duration),
+            ltv: ltv,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            txHash: receipt.hash,
+            blockNumber: receipt.blockNumber,
+            contractLoanId: contractLoanId // Critical for lending
+        });
+        
+        setIsProcessing(true);
+
     } catch (error: any) {
-      console.error("Loan Creation Error:", error);
-      // Nice error message handling
-      if (error.code === 'ACTION_REJECTED') {
-          showToast("Transaction rejected by user.", 'info');
-      } else {
-          showToast(`Transaction failed: ${error.message?.slice(0, 50)}...`, 'error');
-      }
-      setIsLoading(false);
+        console.error("Transaction Error:", error);
+        if (error.code === 'ACTION_REJECTED') {
+            showToast("Request cancelled by user.", 'info');
+        } else if (error.message?.includes("allowance")) { // Simplified check
+             showToast("Approval failed. Cannot proceed without collateral authorization.", 'error');
+        } else {
+            showToast("Transaction failed. Check console for details.", 'error');
+        }
+    } finally {
+        setIsLoading(false);
+        setProcessStep('');
     }
   };
 
   const selectedBorrow = SUPPORTED_ASSETS.find(a => a.symbol === borrowAsset);
   const selectedCollateral = SUPPORTED_ASSETS.find(a => a.symbol === collateralAsset);
+  
+  // Filter available collateral assets based on balance > 0
+  const availableCollateralAssets = SUPPORTED_ASSETS.filter(a => (userBalances[a.symbol] || 0) > 0);
+  // Fallback to show all if none have balance (for browsing) or just show all but disable? 
+  // User requested "only show token which are available".
+  // Better to just map available ones, but if list is empty show all? 
+  const collateralList = availableCollateralAssets.length > 0 ? availableCollateralAssets : SUPPORTED_ASSETS;
 
   return (
     <section className="relative z-10 px-4 py-8 md:px-10 lg:px-40 max-w-[1440px] mx-auto min-h-screen">
       <ProcessingModal 
         isOpen={isProcessing} 
         onClose={() => navigate('/dashboard')} 
-        title="Settling Request" 
-        subtitle="Broadcasting your loan offer to QIE Match Engine..." 
+        title="Request Submitted" 
+        subtitle="Your loan is live on the QIE Marketplace." 
+        successTitle="Loan Request Added!"
+        successMessage="Your collateral is locked, and your request is waiting for a lender. Good luck!"
       />
 
+      {/* Header ... */}
       <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-black text-white mb-2">Create Loan Request</h1>
@@ -161,6 +243,7 @@ const SUPPORTED_ASSETS = [
             
             <form className="space-y-8" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Borrow Input */}
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-white/80 uppercase tracking-wide">I want to borrow</label>
                   <div className="relative">
@@ -202,13 +285,14 @@ const SUPPORTED_ASSETS = [
                   </div>
                 </div>
 
+                {/* Collateral Input */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <label className="text-xs font-bold text-white/80 uppercase tracking-wide">Required Collateral</label>
                     <span className="text-[10px] text-pink-400 font-bold uppercase tracking-widest">Auto-Synced</span>
                   </div>
                   <div className="relative">
-                    <div className="bg-[#0f0518]/50 border border-white/5 rounded-xl flex items-center p-2 cursor-not-allowed opacity-80">
+                    <div className="bg-[#0f0518]/50 border border-white/5 rounded-xl flex items-center p-2">
                       <input 
                         className="bg-transparent border-none text-white text-2xl font-bold w-full focus:ring-0 p-3" 
                         type="number" 
@@ -227,16 +311,21 @@ const SUPPORTED_ASSETS = [
                         </button>
                         
                         {showCollateralDropdown && (
-                          <div className="absolute top-full right-0 mt-2 w-40 bg-[#1e0b2e] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in zoom-in-95 fade-in duration-200">
-                            {SUPPORTED_ASSETS.map(asset => (
+                          <div className="absolute top-full right-0 mt-2 w-56 bg-[#1e0b2e] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in zoom-in-95 fade-in duration-200 max-h-60 overflow-y-auto">
+                            {collateralList.map(asset => (
                               <button
                                 key={asset.symbol}
                                 type="button"
                                 onClick={() => { setCollateralAsset(asset.symbol); setShowCollateralDropdown(false); }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-sm font-bold text-white/70 hover:text-white transition-colors border-b border-white/5 last:border-0"
+                                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 text-sm font-bold text-white/70 hover:text-white transition-colors border-b border-white/5 last:border-0"
                               >
-                                <span className={`material-symbols-outlined text-sm ${asset.color}`}>{asset.icon}</span>
-                                {asset.symbol}
+                                <div className="flex items-center gap-3">
+                                  <span className={`material-symbols-outlined text-sm ${asset.color}`}>{asset.icon}</span>
+                                  {asset.symbol}
+                                </div>
+                                <span className="text-[10px] text-white/40 font-mono">
+                                   {(userBalances[asset.symbol] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                </span>
                               </button>
                             ))}
                           </div>
@@ -247,6 +336,7 @@ const SUPPORTED_ASSETS = [
                 </div>
               </div>
 
+              {/* Sliders & Duration ... keep existing structure */}
               <div className="space-y-6">
                 <div>
                   <div className="flex justify-between mb-4">
@@ -286,12 +376,20 @@ const SUPPORTED_ASSETS = [
                 </div>
               </div>
 
+              {/* Unified Action Button */}
               <button 
                 disabled={isLoading}
                 className="w-full h-16 rounded-2xl bg-gradient-primary text-white font-black text-xl shadow-xl hover:shadow-pink-500/40 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-50" 
                 type="submit"
               >
-                {isLoading ? <div className="size-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : (
+                {isLoading ? (
+                  <div className="flex items-center gap-3">
+                      <div className="size-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-lg uppercase tracking-wide">
+                          {processStep === 'approving' ? `Approving ${collateralAsset}...` : 'Creating Request...'}
+                      </span>
+                  </div>
+                ) : (
                   <>
                     <span className="material-symbols-outlined text-2xl">rocket_launch</span> Post to Marketplace
                   </>
@@ -302,6 +400,7 @@ const SUPPORTED_ASSETS = [
         </div>
 
         <div className="lg:col-span-4 space-y-6">
+           {/* Insight Cards (Keep Existing) */}
            <div className="bg-gradient-to-br from-[#2d1b42] to-[#1e0b2e] rounded-2xl p-6 border border-white/10 relative overflow-hidden shadow-2xl">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-yellow-400">electric_bolt</span> Real-time Insight
