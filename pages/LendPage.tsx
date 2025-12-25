@@ -17,7 +17,7 @@ const LendPage: React.FC = () => {
       const loanData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as any[];
       
       // Filter out user's own loans client-side to ensure they don't see themselves
       const filteredLoans = user 
