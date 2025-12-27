@@ -1,117 +1,136 @@
-# QieLend Local Setup Guide
+# 💎 QieLend - Decentralized P2P Lending Protocol
 
-Follow these steps to run the QieLend P2P Lending application on your local machine. This setup allows the application to interact with browser-based crypto wallets like MetaMask, Coinbase Wallet, and Trust Wallet.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-18.x-61DAFB.svg?style=flat&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?style=flat&logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-5.x-646CFF.svg?style=flat&logo=vite)
+![Firebase](https://img.shields.io/badge/Firebase-9.x-FFCA28.svg?style=flat&logo=firebase)
+![Blockchain](https://img.shields.io/badge/QIE-Blockchain-8A2BE2.svg)
 
-## Prerequisites
+**QieLend** is a next-generation Peer-to-Peer (P2P) lending platform built on the **QIE Blockchain**. It empowers users to borrow and lend crypto assets directly without intermediaries, leveraging smart contracts for security and a unique on-chain **Trust Score** system to evaluate borrower reliability.
 
-- **Node.js**: Ensure you have Node.js (v18 or higher) installed. [Download here](https://nodejs.org/).
-- **Wallet Extension**: Install [MetaMask](https://metamask.io/) or your preferred wallet in your browser.
+---
 
-## Step-by-Step Installation
+## 🚀 Key Features
 
-1. **Extract the Files**:
-   Ensure all the project files (App.tsx, index.html, package.json, etc.) are in a single directory.
+### 🏦 Decentralized Lending & Borrowing
 
-2. **Install Dependencies**:
-   Open your terminal in the project folder and run:
+- **Create Loan Requests**: Borrowers can set their own terms (Amount, Interest Rate, Duration).
+- **Collateralized Loans**: Security logic ensures all loans are backed by crypto assets (ERC20 tokens).
+- **Direct Funding**: Lenders can browse and fund loans directly via smart contracts.
 
-   ```bash
-   npm install
-   ```
+### 🛡️ Trust Score System
 
-3. **Start the Development Server**:
-   Run the following command to start the app:
+- **On-Chain Reputation**: Proprietary scoring algorithm stored on the blockchain.
+- **Dynamic Updates**: Score increases with repayment and decreases with default.
+- **Identity Verification**: Integrated KYC status for enhanced platform trust.
 
-   ```bash
-   npm run dev
-   ```
+### 💼 Comprehensive Dashboard
 
-4. **Access the Application**:
-   - The terminal will provide a link, usually `http://localhost:5173`.
-   - Open this URL in your browser.
-   - Click **"Connect Wallet"** to invoke your browser extension.
+- **Real-Time Portfolio**: Track Borrowing, Lending, and Wallet activity in one view.
+- **Interactive Graphs**: Visual breakdown of assets and loan performance.
+- **Transaction History**: Unified log of all blockchain and platform interactions.
 
-## Why this is necessary
+### 💰 Integrated Crypto Wallet
 
-Modern browsers block ES6 modules and TypeScript files when opened directly via `file://`. Using **Vite** provides a secure `localhost` environment which is a requirement for the **EIP-1193** standard that wallets use to communicate with web applications.
+- **Multi-Asset Support**: Manage Native QIE, USDT, and WBTC balances.
+- **Send & Receive**: Built-in transfer functionality with address validation.
+- **Faucet Access**: Easy access to testnet tokens for development.
 
-## Troubleshooting Wallet Connection
+---
 
-- **Extension not detected**: Ensure your wallet extension is unlocked.
-- **Wrong Network**: The app is configured for QIE Mainnet. You may need to add the QIE network to your wallet manually if it's not automatically prompted.
-- **Multiple Wallets**: If you have multiple extensions, they may conflict. Check the console (F12) if the connection button doesn't trigger a popup.
+## �️ Tech Stack
 
-## Development Workflow (Stopping & Restarting)
+- **Frontend**: React.js, TypeScript, Tailwind CSS, Framer Motion
+- **Build Tool**: Vite
+- **Backend / Database**: Firebase Firestore (User Profiles, Off-chain Metadata)
+- **Blockchain**: QIE Chain (EVM Compatible), Hardhat
+- **Smart Contracts**: Solidity (LendingPool, TrustToken, MockERC20)
+- **Interaction**: Ethers.js v6
 
-If you need to close your terminal and continue later, follow these steps.
+---
 
-### 🛑 How to Stop
+## 📦 Installation & Setup
 
-In each terminal window where a process is running (`npx hardhat node` or `npm run dev`), simply press **`Ctrl + C`** to stop the process.
+Follow these steps to set up the project locally.
 
-### 🔄 How to Restart (Next Day)
+### Prerequisites
 
-Since we are using a **local blockchain**, stopping the node will **erase all local data** (wallets, loans, trust scores). You must restart the chain and redeploy the contracts each time.
+- Node.js (v18+)
+- Metamask (or any Web3 Wallet) configured for QIE Testnet.
 
-**Step 1: Start the Local Blockchain**
-Open a terminal and run:
+### 1. Clone the Repository
 
 ```bash
-cd smart-contracts
-npx hardhat node
+git clone https://github.com/your-username/qielend.git
+cd qielend
 ```
 
-_Keep this terminal open._
-
-**Step 2: Deploy Contracts**
-Open a **new** terminal window (split or tab) and run:
+### 2. Install Dependencies
 
 ```bash
-cd smart-contracts
-npx hardhat run scripts/deploy.ts --network localhost
+npm install
 ```
 
-_Good News: Hardhat usually generates the **exact same addresses** every time you restart. You likely won't need to update your `.env` file!_
+### 3. Configure Environment
 
-**Step 3: Start the Frontend**
-In the same or new terminal, go back to the project root and start the app:
+Create a `.env` file in the root directory:
+
+```env
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+# Add other Firebase config keys...
+```
+
+### 4. Run the Application
 
 ```bash
-cd ..
 npm run dev
 ```
 
-**Step 4: Reset MetaMask (Crucial!)**
+The app will be available at `http://localhost:5173`.
 
-1. Your account addresses and keys **stay the same**.
-2. However, your **Transaction History** (Nonce) must be reset because the chain is fresh.
-3. Go to **MetaMask > Settings > Advanced > Clear Activity Tab Data**.
-4. _If you don't do this, transactions will get stuck._
+---
 
-- **The Fix**: Ignore old loans or manually delete them from Firebase Console if they get confusing. Start fresh with "New Loan Request".
+## 🔗 Smart Contract Deployment
 
-## 🚀 Migrating to QIE Testnet (Public)
+To explore or modify the smart contracts, navigate to the `smart-contracts` folder.
 
-The app is now configured for **QIE Testnet** (Chain ID: 1983). To go live:
+```bash
+cd smart-contracts
+npm install
+npx hardhat compile
+```
 
-1.  **Configure Account**:
+**Deploy to QIE Testnet:**
 
-    - Open `.env`.
-    - Add your wallet's Private Key: `PRIVATE_KEY=0x...` (Must have QIE for gas).
+```bash
+npx hardhat run scripts/deploy.ts --network qie_testnet
+```
 
-2.  **Deploy Contracts**:
+Update `src/config/blockchain.ts` with your new contract addresses after deployment.
 
-    ```bash
-    cd smart-contracts
-    npx hardhat run scripts/deploy.ts --network qie_testnet
-    ```
+---
 
-3.  **Update Config**:
+## 🤝 Contribution
 
-    - Copy the deployed addresses from the terminal output.
-    - Open `src/config/blockchain.ts`.
-    - Replace the placeholder values in `CONTRACT_ADDRESSES` with your real addresses.
+We welcome contributions! Please follow these steps:
 
-4.  **Run App**:
-    - `npm run dev`
-    - Connect your wallet (ensure it's on QIE Testnet).
+1.  **Fork** the repository.
+2.  Create a new **Feature Branch** (`git checkout -b feature/AmazingFeature`).
+3.  **Commit** your changes (`git commit -m 'Add some AmazingFeature'`).
+4.  **Push** to the branch (`git push origin feature/AmazingFeature`).
+5.  Open a **Pull Request**.
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+<center>
+  <p>Built with ❤️ on the QIE Blockchain</p>
+</center>
