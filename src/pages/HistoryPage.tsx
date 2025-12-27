@@ -91,10 +91,13 @@ const HistoryPage: React.FC = () => {
                       <p className="text-white font-bold text-sm">{tx.amount.toLocaleString()} {tx.asset}</p>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${
-                        tx.status === 'active' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase ${
+                        tx.status === 'repaid' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 
+                        tx.status === 'active' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 
+                        tx.status === 'defaulted' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 
+                        'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
                       }`}>
-                        {tx.status.toUpperCase()}
+                        {tx.status}
                       </span>
                     </td>
                   </tr>

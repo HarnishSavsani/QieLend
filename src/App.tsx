@@ -9,6 +9,7 @@ import WalletPage from './pages/WalletPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import LoanDetailsPage from './pages/LoanDetailsPage';
+import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -122,6 +123,7 @@ const AppContent: React.FC = () => {
                   <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                   <Route path="/loan/:id" element={<ProtectedRoute><LoanDetailsPage /></ProtectedRoute>} />
+                  <Route path="/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 </Routes>
               </main>
               <Footer />

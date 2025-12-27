@@ -6,7 +6,8 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import { MOCK_TRANSACTIONS } from '../config/constants';
 
-import { formatEther } from 'ethers';
+import { formatEther, Contract, JsonRpcProvider } from 'ethers';
+import { CONTRACT_ADDRESSES, TRUST_SCORE_ABI, QIE_CHAIN_CONFIG } from '../config/blockchain';
 
 const Dashboard: React.FC = () => {
   const { user, provider } = useAuth();
@@ -14,6 +15,7 @@ const Dashboard: React.FC = () => {
   const [myInvestments, setMyInvestments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [balance, setBalance] = useState<string>("0.0");
+  const [trustScore, setTrustScore] = useState<number>(100);
 
   useEffect(() => {
     if (provider && user?.walletAddress) {
@@ -26,6 +28,23 @@ const Dashboard: React.FC = () => {
         }
       };
       fetchBalance();
+      
+      // Fetch on-chain trust score (with Firebase fallback)
+      const fetchTrustScore = async () => {
+        try {
+          const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
+          const trustContract = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, rpcProvider);
+          const score = await trustContract.getScore(user.walletAddress);
+          setTrustScore(Math.min(100, Number(score)));
+        } catch (err) {
+          console.error("Error fetching on-chain trust score, using Firebase cache:", err);
+          // Fallback to Firebase cached value if available
+          if (user?.trustScore !== undefined) {
+            setTrustScore(user.trustScore);
+          }
+        }
+      };
+      fetchTrustScore();
     }
   }, [provider, user?.walletAddress]);
 
@@ -80,11 +99,11 @@ const Dashboard: React.FC = () => {
             <div className="absolute -right-6 -top-6 bg-gradient-primary w-24 h-24 blur-[40px] rounded-full opacity-40"></div>
             <p className="text-white/50 text-sm font-medium mb-1">QIE Trust Score</p>
             <div className="flex items-end gap-2 mb-2">
-              <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-pink-200">{user?.trustScore || 100}</h3>
+              <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-pink-200">{trustScore}</h3>
               <span className="text-sm font-bold text-pink-400 mb-1.5">/ 100</span>
             </div>
             <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
-               <div className="bg-gradient-primary h-full" style={{ width: `${user?.trustScore || 100}%` }}></div>
+               <div className="bg-gradient-primary h-full" style={{ width: `${trustScore}%` }}></div>
             </div>
           </div>
         </div>
@@ -107,12 +126,27 @@ const Dashboard: React.FC = () => {
                   <Link to={`/loan/${loan.id}`} key={loan.id} className="block p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <div className={`size-10 rounded-full flex items-center justify-center ${loan.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                          <span className="material-symbols-outlined">{loan.status === 'active' ? 'check_circle' : 'hourglass_top'}</span>
+                        <div className={`size-10 rounded-full flex items-center justify-center ${
+                          loan.status === 'repaid' ? 'bg-green-500/20 text-green-400' : 
+                          loan.status === 'active' ? 'bg-blue-500/20 text-blue-400' : 
+                          loan.status === 'defaulted' ? 'bg-red-500/20 text-red-400' : 
+                          'bg-yellow-500/20 text-yellow-400'
+                        }`}>
+                          <span className="material-symbols-outlined">{
+                            loan.status === 'repaid' ? 'check_circle' : 
+                            loan.status === 'active' ? 'play_circle' : 
+                            loan.status === 'defaulted' ? 'error' : 
+                            'hourglass_top'
+                          }</span>
                         </div>
                         <div>
                           <h4 className="text-white font-bold">{loan.amount.toLocaleString()} {loan.asset}</h4>
-                          <p className="text-xs text-white/50">Status: <span className="capitalize">{loan.status}</span></p>
+                          <p className="text-xs text-white/50">Status: <span className={`capitalize ${
+                            loan.status === 'repaid' ? 'text-green-400' : 
+                            loan.status === 'active' ? 'text-blue-400' : 
+                            loan.status === 'defaulted' ? 'text-red-400' : 
+                            'text-yellow-400'
+                          }`}>{loan.status}</span></p>
                         </div>
                       </div>
                       <div className="text-right">

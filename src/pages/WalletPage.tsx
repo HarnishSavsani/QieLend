@@ -6,7 +6,7 @@ import { formatEther, parseEther, JsonRpcProvider, Contract } from 'ethers';
 import { QIE_CHAIN_CONFIG, CONTRACT_ADDRESSES, ERC20_ABI } from '../config/blockchain';
 
 // Helper Component for Faucet
-const FaucetButton = ({ symbol, address }: { symbol: string, address: string }) => {
+const FaucetButton = ({ symbol, address, amount }: { symbol: string, address: string, amount: string }) => {
     const { signer, showToast } = useAuth();
     const [loading, setLoading] = useState(false);
 
@@ -15,10 +15,9 @@ const FaucetButton = ({ symbol, address }: { symbol: string, address: string }) 
         setLoading(true);
         try {
             const contract = new Contract(address, ERC20_ABI, signer);
-            // Mint 1000 Tokens (assuming 18 decimals)
-            const tx = await contract.mint(await signer.getAddress(), parseEther("1000"));
+            const tx = await contract.mint(await signer.getAddress(), parseEther(amount));
             await tx.wait();
-            showToast(`Minted 1000 ${symbol} successfully!`, "success");
+            showToast(`Minted ${amount} ${symbol} successfully!`, "success");
         } catch (e: any) {
             console.error(e);
             showToast("Mint failed: " + e.message, "error");
@@ -56,7 +55,7 @@ const FaucetButton = ({ symbol, address }: { symbol: string, address: string }) 
                 className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all flex items-center justify-center gap-2"
             >
                 {loading ? <span className="animate-spin material-symbols-outlined text-[14px]">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">water_drop</span>}
-                Get {symbol}
+                Get {amount} {symbol}
             </button>
             <button 
                 onClick={addToWallet}
@@ -73,14 +72,33 @@ const WalletPage: React.FC = () => {
   const { user, openWalletModal, showToast, provider } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [qieBalance, setQieBalance] = useState('0.00');
+  const [tokenBalances, setTokenBalances] = useState({ USDT: '0.00', WBTC: '0.00' });
 
   const fetchBalance = async () => {
     if (user?.walletAddress) {
         try {
             // Direct RPC provider to bypass MetaMask throttling
             const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
+            
+            // 1. Fetch Native QIE
             const bal = await rpcProvider.getBalance(user.walletAddress);
             setQieBalance(formatEther(bal));
+
+            // 2. Fetch ERC20 Balances (USDT, WBTC)
+            const tokens = ['USDT', 'WBTC'] as const;
+            const newBalances = { ...tokenBalances };
+            
+            for (const symbol of tokens) {
+                const address = CONTRACT_ADDRESSES[symbol];
+                if (address) {
+                    const contract = new Contract(address, ERC20_ABI, rpcProvider);
+                    const rawBalance = await contract.balanceOf(user.walletAddress);
+                    // Assuming 18 decimals for mocks. in prod, call decimals()
+                    newBalances[symbol] = formatEther(rawBalance); 
+                }
+            }
+            setTokenBalances(newBalances);
+
         } catch (e: any) {
             console.error("Failed to fetch balance", e);
         }
@@ -104,8 +122,14 @@ const WalletPage: React.FC = () => {
     showToast("Transaction signing triggered. Confirm in your wallet extension.", "info");
   };
 
-  // Demo valuation
-  const totalUsdValuation = (parseFloat(qieBalance) * 1.0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // Calculate Total Net Worth correctly using SUPPORTED_ASSETS prices
+  // QIE: 0.05, USDT: 1.0, WBTC: 65000.0
+  const qieVal = parseFloat(qieBalance) * 0.05;
+  const usdtVal = parseFloat(tokenBalances.USDT) * 1.0;
+  const wbtcVal = parseFloat(tokenBalances.WBTC) * 65000.0;
+  const totalVal = qieVal + usdtVal + wbtcVal;
+  
+  const totalUsdValuation = totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-10 lg:px-20 py-8 relative">
@@ -225,10 +249,29 @@ const WalletPage: React.FC = () => {
                     <td className="p-4"><span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/10 font-bold uppercase">QIE MAINNET</span></td>
                     <td className="p-4 text-right font-bold text-white">{qieBalance}</td>
                   </tr>
-                  <tr className="opacity-30">
-                    <td className="p-4"><div className="flex items-center gap-3"><div className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white font-bold text-[10px]">USDT</div><span className="font-bold text-white">Tether</span></div></td>
-                    <td className="p-4 text-[10px] text-white/40">ETHEREUM</td>
-                    <td className="p-4 text-right font-bold text-white">0.00</td>
+                  
+                  {/* USDT Row */}
+                  <tr className="group hover:bg-white/5 transition-colors">
+                    <td className="p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="size-8 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-[10px]">USDT</div>
+                            <span className="font-bold text-white">Tether</span>
+                        </div>
+                    </td>
+                    <td className="p-4"><span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/10 font-bold uppercase">QIE (ERC20)</span></td>
+                    <td className="p-4 text-right font-bold text-white">{tokenBalances.USDT}</td>
+                  </tr>
+
+                  {/* WBTC Row */}
+                  <tr className="group hover:bg-white/5 transition-colors">
+                    <td className="p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="size-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-[10px]">WBTC</div>
+                            <span className="font-bold text-white">Wrapped BTC</span>
+                        </div>
+                    </td>
+                    <td className="p-4"><span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/10 font-bold uppercase">QIE (ERC20)</span></td>
+                    <td className="p-4 text-right font-bold text-white">{tokenBalances.WBTC}</td>
                   </tr>
                 </tbody>
               </table>
@@ -242,8 +285,8 @@ const WalletPage: React.FC = () => {
                <p className="text-xs text-white/40 mb-6">Mint free tokens to test the protocol.</p>
                
                <div className="space-y-4">
-                  <FaucetButton symbol="USDT" address={CONTRACT_ADDRESSES.USDT} />
-                  <FaucetButton symbol="WBTC" address={CONTRACT_ADDRESSES.WBTC} />
+                  <FaucetButton symbol="USDT" address={CONTRACT_ADDRESSES.USDT} amount="1.0" />
+                  <FaucetButton symbol="WBTC" address={CONTRACT_ADDRESSES.WBTC} amount="0.000015" />
                </div>
             </div>
           </div>

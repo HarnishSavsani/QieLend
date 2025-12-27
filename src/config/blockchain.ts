@@ -4,37 +4,30 @@
  * Setting the stage for Smart Contract integration.
  */
 
-// QIE Testnet Configuration
-const CHAIN_ID = '1983';
-const RPC_URL = 'https://rpc1testnet.qie.digital';
+// QIE Blockchain Configuration
+// Loaded from .env
 
-/* 
-// Previous dynamic logic (kept for reference when moving to prod)
-const CHAIN_ID = import.meta.env.VITE_QIE_CHAIN_ID || '31337';
-const RPC_URL = CHAIN_ID === '31337' 
-    ? 'http://127.0.0.1:8545' 
-    : (import.meta.env.VITE_QIE_RPC_URL || 'https://rpc-main1.qie.org');
-*/
+const CHAIN_ID = import.meta.env.VITE_QIE_CHAIN_ID || '1983';
+const RPC_URL = import.meta.env.VITE_QIE_RPC_URL || 'https://rpc1testnet.qie.digital';
 
 export const QIE_CHAIN_CONFIG = {
     chainId: CHAIN_ID,
-    chainName: 'QIE Testnet',
+    chainName: 'QIE Network',
     nativeCurrency: {
         name: 'QIE Coin',
         symbol: 'QIE',
         decimals: 18
     },
     rpcUrls: [RPC_URL],
-    blockExplorerUrls: ['https://testnet.qiescan.com'] // Common guess, or leave empty if unsure
+    blockExplorerUrls: [import.meta.env.VITE_QIE_EXPLORER_URL || 'https://testnet.qiescan.com']
 };
 
 export const CONTRACT_ADDRESSES = {
-    // TODO: DEPLOY CONTRACTS TO QIE TESTNET AND UPDATE THESE ADDRESSES
-    LendingPool: 'YOUR_DEPLOYED_LENDING_POOL_ADDRESS', 
-    TrustToken: 'YOUR_DEPLOYED_TRUST_SCORE_ADDRESS', 
-    USDT: 'YOUR_DEPLOYED_USDT_ADDRESS',
-    WBTC: 'YOUR_DEPLOYED_WBTC_ADDRESS',
-    QIE: 'YOUR_DEPLOYED_QIE_ADDRESS'
+    LendingPool: import.meta.env.VITE_CONTRACT_LENDING_POOL || '', 
+    TrustToken: import.meta.env.VITE_CONTRACT_TRUST_SCORE || '', 
+    USDT: import.meta.env.VITE_CONTRACT_USDT || '',
+    WBTC: import.meta.env.VITE_CONTRACT_WBTC || '',
+    QIE: import.meta.env.VITE_CONTRACT_QIE || ''
 };
 
 // Generic ERC20 ABI
@@ -53,10 +46,12 @@ export const LENDING_POOL_ABI = [
     "function createLoanRequest(uint256 _amount, uint256 _duration, uint256 _interest, address _collateralToken, uint256 _collateralAmount) external",
     "function fundLoan(uint256 _loanId) external payable",
     "function repayLoan(uint256 _loanId) external payable",
+    "function checkDefault(uint256 _loanId) external",
     "function getLoan(uint256 _loanId) external view returns (tuple(uint256 id, address borrower, address lender, uint256 amount, uint256 interest, uint256 duration, address collateralToken, uint256 collateralAmount, uint256 startTime, bool funded, bool repaid, bool defaulted))",
     "event LoanCreated(uint256 indexed loanId, address indexed borrower, uint256 amount, address collateralToken, uint256 collateralAmount)",
     "event LoanFunded(uint256 indexed loanId, address indexed lender)",
-    "event LoanRepaid(uint256 indexed loanId, address indexed borrower)"
+    "event LoanRepaid(uint256 indexed loanId, address indexed borrower)",
+    "event LoanDefaulted(uint256 indexed loanId)"
 ];
 
 // ABI for TrustScore.sol

@@ -33,7 +33,7 @@ contract TrustScore is Ownable {
         int256 newScore = int256(currentScore) + change;
         
         if (newScore < 0) newScore = 0;
-        if (newScore > 1000) newScore = 1000; // Cap score
+        if (newScore > 100) newScore = 100; // Cap score at 100
 
         scores[user] = uint256(newScore);
         emit ScoreUpdated(user, uint256(newScore));

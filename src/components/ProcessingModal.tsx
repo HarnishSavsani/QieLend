@@ -8,6 +8,7 @@ interface ProcessingModalProps {
   subtitle: string;
   successTitle?: string;
   successMessage?: string;
+  isSuccess?: boolean; // NEW: External control for success state
 }
 
 const ProcessingModal: React.FC<ProcessingModalProps> = ({ 
@@ -16,18 +17,19 @@ const ProcessingModal: React.FC<ProcessingModalProps> = ({
   title, 
   subtitle,
   successTitle = 'Settled!',
-  successMessage = 'Transaction confirmed on QIE Chain'
+  successMessage = 'Transaction confirmed on QIE Chain',
+  isSuccess = false // Default to false
 }) => {
   const [showCheck, setShowCheck] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => setShowCheck(true), 1500);
-      return () => clearTimeout(timer);
-    } else {
+    if (!isOpen) {
       setShowCheck(false);
+    } else if (isSuccess) {
+      // Only show check when explicitly told transaction succeeded
+      setShowCheck(true);
     }
-  }, [isOpen]);
+  }, [isOpen, isSuccess]);
 
   if (!isOpen) return null;
 

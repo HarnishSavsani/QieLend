@@ -25,6 +25,7 @@ const BorrowPage: React.FC = () => {
   const [duration, setDuration] = useState('30');
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [processStep, setProcessStep] = useState(''); // 'approving' | 'creating' | ''
 
   const [prices, setPrices] = useState<AssetPriceMap>({});
@@ -197,6 +198,7 @@ const BorrowPage: React.FC = () => {
         });
         
         setIsProcessing(true);
+        setIsSuccess(true);
 
     } catch (error: any) {
         console.error("Transaction Error:", error);
@@ -227,11 +229,12 @@ const BorrowPage: React.FC = () => {
     <section className="relative z-10 px-4 py-8 md:px-10 lg:px-40 max-w-[1440px] mx-auto min-h-screen">
       <ProcessingModal 
         isOpen={isProcessing} 
-        onClose={() => navigate('/dashboard')} 
+        onClose={() => { setIsProcessing(false); setIsSuccess(false); navigate('/dashboard'); }} 
         title="Request Submitted" 
         subtitle="Your loan is live on the QIE Marketplace." 
         successTitle="Loan Request Added!"
         successMessage="Your collateral is locked, and your request is waiting for a lender. Good luck!"
+        isSuccess={isSuccess}
       />
 
       {/* Header ... */}

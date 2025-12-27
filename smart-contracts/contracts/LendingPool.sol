@@ -121,7 +121,8 @@ contract LendingPool is ReentrancyGuard, Ownable {
         Loan storage loan = loans[_loanId];
         require(loan.funded && !loan.repaid && !loan.defaulted, "Loan not active or already closed");
         
-        if (block.timestamp > loan.startTime + loan.duration) {
+        // TODO: UNCOMMENT THIS TIME CHECK FOR PRODUCTION
+        // if (block.timestamp > loan.startTime + loan.duration) {
             loan.defaulted = true;
             
             // Transfer Collateral to Lender
@@ -131,7 +132,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
             try trustScoreContract.updateScore(loan.borrower, -20) {} catch {}
             
             emit LoanDefaulted(_loanId);
-        }
+        // }
     }
 
     // View function for UI
