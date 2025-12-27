@@ -38,49 +38,12 @@ const ProcessingModal: React.FC<ProcessingModalProps> = ({
       <div className="absolute inset-0 bg-background-dark/90 backdrop-blur-xl animate-in fade-in duration-500" />
       
       <div className="relative w-full max-w-sm text-center">
-        <div className="mb-8 relative flex justify-center">
-          {/* Graphite Sketch Animation */}
-          <svg width="120" height="120" viewBox="0 0 120 120" className="drop-shadow-[0_0_15px_rgba(217,70,239,0.3)]">
-            <circle 
-              cx="60" cy="60" r="54" 
-              fill="none" 
-              stroke="rgba(255,255,255,0.05)" 
-              strokeWidth="2"
-            />
-            <circle 
-              cx="60" cy="60" r="54" 
-              fill="none" 
-              stroke="url(#graphiteGradient)" 
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray="339"
-              strokeDashoffset={showCheck ? "0" : "339"}
-              className="transition-all duration-[2000ms] ease-out"
-            />
-            {showCheck && (
-              <path 
-                d="M35 60 L52 77 L85 44" 
-                fill="none" 
-                stroke="#d946ef" 
-                strokeWidth="6" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-                strokeDasharray="100"
-                strokeDashoffset="0"
-                className="animate-[draw_1s_ease-out_forwards]"
-              />
-            )}
-            <defs>
-              <linearGradient id="graphiteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#d946ef" />
-                <stop offset="100%" stopColor="#8b5cf6" />
-              </linearGradient>
-            </defs>
-          </svg>
-          
-          {!showCheck && (
-             <div className="absolute inset-0 flex items-center justify-center">
-                <div className="size-16 border-b-2 border-pink-500 rounded-full animate-spin"></div>
+        <div className="mb-8 relative flex justify-center items-center h-[120px]">
+          {!showCheck ? (
+             <div className="size-16 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+             <div className="size-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center animate-in zoom-in duration-300 shadow-xl shadow-green-500/30">
+                 <span className="material-symbols-outlined text-white text-5xl font-bold">check</span>
              </div>
           )}
         </div>

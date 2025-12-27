@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../config/firebase';
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import { MOCK_TRANSACTIONS } from '../config/constants';
 
@@ -13,7 +13,9 @@ const Dashboard: React.FC = () => {
   const { user, provider } = useAuth();
   const [myLoans, setMyLoans] = useState<any[]>([]);
   const [myInvestments, setMyInvestments] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  const [loadingLoans, setLoadingLoans] = useState(true);
+  const [loadingInvestments, setLoadingInvestments] = useState(true);
   const [balance, setBalance] = useState<string>("0.0");
   const [trustScore, setTrustScore] = useState<number>(100);
 
@@ -54,12 +56,13 @@ const Dashboard: React.FC = () => {
     const qBorrowed = query(collection(db, "loans"), where("borrowerId", "==", user.id));
     const unsubBorrowed = onSnapshot(qBorrowed, (snapshot) => {
       setMyLoans(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoadingLoans(false);
     });
 
     const qInvested = query(collection(db, "loans"), where("lenderId", "==", user.id));
     const unsubInvested = onSnapshot(qInvested, (snapshot) => {
       setMyInvestments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setIsLoading(false);
+      setLoadingInvestments(false);
     });
 
     return () => {
@@ -68,7 +71,13 @@ const Dashboard: React.FC = () => {
     };
   }, [user]);
 
-  const totalBorrowed = myLoans.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  // DERIVED DATA: Separate actual Loans from Wallet Transactions (Piggyback strategy)
+  // DERIVED DATA: Separate actual Loans from Wallet Transactions (Piggyback strategy)
+  const realLoans = myLoans.filter(d => d.type !== 'wallet_tx');
+  const walletTxs = myLoans.filter(d => d.type === 'wallet_tx')
+                               .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const totalBorrowed = realLoans.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const totalInvested = myInvestments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
 
   return (
@@ -108,110 +117,179 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="glass-panel rounded-2xl overflow-hidden">
-              <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-pink-400">gavel</span> My Borrowing
-                </h3>
-                <Link className="text-xs text-pink-300 hover:text-white transition-colors" to="/history">View All</Link>
+        <div className="flex flex-col gap-6">
+          
+          {/* Row 1: Borrowing (50%) & Lending (50%) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* My Borrowing */}
+              <div className="glass-panel rounded-2xl overflow-hidden flex flex-col max-h-[400px]">
+                <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-pink-400">gavel</span> Borrowing
+                  </h3>
+                  <Link className="text-xs text-pink-300 hover:text-white transition-colors" to="/history">View All</Link>
+                </div>
+                <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1">
+                    {loadingLoans ? (
+                      <div className="p-10 flex justify-center"><div className="size-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div></div>
+                    ) : realLoans.length === 0 ? (
+                      <div className="p-10 text-center text-white/30 text-sm">No active loan requests.</div>
+                    ) : (
+                      realLoans.map(loan => (
+                        <Link to={`/loan/${loan.id}`} key={loan.id} className="block p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-4">
+                                  {/* Icon Container */}
+                                  <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${
+                                      loan.status === 'repaid' ? 'bg-green-500/10 text-green-400' : 
+                                      loan.status === 'active' ? 'bg-blue-500/10 text-blue-400' : 
+                                      loan.status === 'defaulted' ? 'bg-red-500/10 text-red-500' :
+                                      'bg-yellow-500/10 text-yellow-400'
+                                  }`}>
+                                      <span className="material-symbols-outlined text-[20px]">{
+                                          loan.status === 'repaid' ? 'check' : 
+                                          loan.status === 'active' ? 'play_arrow' : 
+                                          loan.status === 'defaulted' ? 'error' :
+                                          'hourglass_empty'
+                                      }</span>
+                                  </div>
+                                  <div>
+                                      <h4 className="text-white font-bold text-sm">{loan.amount.toLocaleString()} {loan.asset}</h4>
+                                      <p className="text-[10px] text-white/40">Collateral: {loan.collateralAmount} {loan.collateralAsset}</p>
+                                  </div>
+                              </div>
+                              <div className="text-right">
+                                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full capitalize ${
+                                      loan.status === 'repaid' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
+                                      loan.status === 'active' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 
+                                      loan.status === 'defaulted' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                      'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                  }`}>{loan.status}</span>
+                              </div>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                </div>
               </div>
-              {isLoading ? (
-                <div className="p-10 flex justify-center"><div className="size-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div></div>
-              ) : myLoans.length === 0 ? (
-                <div className="p-10 text-center text-white/30 text-sm">No active loan requests.</div>
-              ) : (
-                myLoans.map(loan => (
-                  <Link to={`/loan/${loan.id}`} key={loan.id} className="block p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className={`size-10 rounded-full flex items-center justify-center ${
-                          loan.status === 'repaid' ? 'bg-green-500/20 text-green-400' : 
-                          loan.status === 'active' ? 'bg-blue-500/20 text-blue-400' : 
-                          loan.status === 'defaulted' ? 'bg-red-500/20 text-red-400' : 
-                          'bg-yellow-500/20 text-yellow-400'
-                        }`}>
-                          <span className="material-symbols-outlined">{
-                            loan.status === 'repaid' ? 'check_circle' : 
-                            loan.status === 'active' ? 'play_circle' : 
-                            loan.status === 'defaulted' ? 'error' : 
-                            'hourglass_top'
-                          }</span>
-                        </div>
-                        <div>
-                          <h4 className="text-white font-bold">{loan.amount.toLocaleString()} {loan.asset}</h4>
-                          <p className="text-xs text-white/50">Status: <span className={`capitalize ${
-                            loan.status === 'repaid' ? 'text-green-400' : 
-                            loan.status === 'active' ? 'text-blue-400' : 
-                            loan.status === 'defaulted' ? 'text-red-400' : 
-                            'text-yellow-400'
-                          }`}>{loan.status}</span></p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                         <p className="text-xs text-white/40">Collateral</p>
-                         <p className="text-sm font-bold text-white">{loan.collateralAmount} {loan.collateralAsset}</p>
-                      </div>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
 
-            <div className="glass-panel rounded-2xl overflow-hidden">
-              <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-purple-400">payments</span> My Lending Portfolio
-                </h3>
-              </div>
-              {isLoading ? (
-                <div className="p-10 flex justify-center"><div className="size-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div></div>
-              ) : myInvestments.length === 0 ? (
-                <div className="p-10 text-center text-white/30 text-sm">You haven't funded any loans yet.</div>
-              ) : (
-                myInvestments.map(loan => (
-                  <Link to={`/loan/${loan.id}`} key={loan.id} className="block p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
-                     <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                           <img src={loan.borrowerAvatar} className="size-8 rounded-full" alt="" />
-                           <div>
-                              <p className="text-sm font-bold text-white">Lending to {loan.borrowerName}</p>
-                              <p className="text-[10px] text-white/40">{loan.amount} {loan.asset} @ {loan.apy}% APY</p>
+              {/* My Lending */}
+              <div className="glass-panel rounded-2xl overflow-hidden flex flex-col max-h-[400px]">
+                <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-purple-400">payments</span> Lending
+                  </h3>
+                  <Link className="text-xs text-pink-300 hover:text-white transition-colors" to="/history">View All</Link>
+                </div>
+                <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1">
+                    {loadingInvestments ? (
+                      <div className="p-10 flex justify-center"><div className="size-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div></div>
+                    ) : myInvestments.length === 0 ? (
+                      <div className="p-10 text-center text-white/30 text-sm">You haven't funded any loans yet.</div>
+                    ) : (
+                      myInvestments.map(loan => (
+                        <Link to={`/loan/${loan.id}`} key={loan.id} className="block p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
+                           <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-4">
+                                 {/* Icon Container */}
+                                 <div className="size-10 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20">
+                                     <span className="font-bold text-purple-400 text-sm">{loan.borrowerName?.charAt(0)}</span>
+                                 </div>
+                                 <div className="overflow-hidden">
+                                    <p className="text-sm font-bold text-white truncate">To: {loan.borrowerName}</p>
+                                    <p className="text-[10px] text-white/40 truncate">{loan.amount} {loan.asset} @ {loan.apy}%</p>
+                                 </div>
+                              </div>
+                              <div className="text-right">
+                                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full capitalize ${
+                                   loan.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
+                                   loan.status === 'repaid' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 
+                                   loan.status === 'defaulted' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                   'bg-white/10 text-white/50 border border-white/10'
+                                 }`}>
+                                   {loan.status === 'active' ? 'Earning' : loan.status}
+                                 </span>
+                              </div>
                            </div>
-                        </div>
-                        <div className="text-right">
-                           <span className={`text-xs font-bold ${
-                             loan.status === 'active' ? 'text-green-400' : 
-                             loan.status === 'repaid' ? 'text-blue-400' : 
-                             loan.status === 'defaulted' ? 'text-red-400' : 'text-white/50'
-                           }`}>
-                             {loan.status === 'active' ? 'Earning' : 
-                              loan.status === 'repaid' ? 'Repaid' : 
-                              loan.status === 'defaulted' ? 'Defaulted' : loan.status}
-                           </span>
-                        </div>
-                     </div>
-                  </Link>
-                ))
-              )}
-            </div>
+                        </Link>
+                      ))
+                    )}
+                </div>
+              </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="glass-panel p-6 rounded-2xl">
-              <h3 className="text-lg font-bold text-white mb-6">Quick Actions</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <Link to="/lend" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-[#0f0518] border border-white/5 hover:border-pink-500/30 transition-all group text-center">
-                  <span className="material-symbols-outlined text-pink-400 group-hover:scale-110 transition-transform">search</span>
-                  <span className="text-[10px] font-bold uppercase text-white/60">Find Loans</span>
-                </Link>
-                <Link to="/wallet" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-[#0f0518] border border-white/5 hover:border-pink-500/30 transition-all group text-center">
-                  <span className="material-symbols-outlined text-purple-400 group-hover:scale-110 transition-transform">account_balance_wallet</span>
-                  <span className="text-[10px] font-bold uppercase text-white/60">Wallet</span>
-                </Link>
+          {/* Row 2: Wallet Activity (70%) & Quick Actions (30%) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Wallet Activity (lg:col-span-2 = 67%) */}
+              <div className="lg:col-span-2 glass-panel rounded-2xl overflow-hidden flex flex-col max-h-[300px]">
+                 <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                     <span className="material-symbols-outlined text-green-400">history</span> Wallet Activity
+                   </h3>
+                   <Link className="text-xs text-pink-300 hover:text-white transition-colors" to="/history">View All</Link>
+                 </div>
+                 <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1">
+                     {loadingLoans ? (
+                       <div className="p-10 flex justify-center"><div className="size-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div></div>
+                     ) : walletTxs.length === 0 ? (
+                       <div className="p-10 text-center text-white/30 text-sm">No recent transactions.</div>
+                     ) : (
+                       walletTxs.map(tx => (
+                         <div key={tx.id} className="block p-5 border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <div className="flex justify-between items-center">
+                               <div className="flex items-center gap-4">
+                                  {/* Icon Container */}
+                                  <div className="size-10 rounded-full bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
+                                     <span className="material-symbols-outlined text-[20px] text-white/60">arrow_outward</span>
+                                  </div>
+                                  <div>
+                                     <p className="text-sm font-bold text-white">Sent {tx.amount} {tx.asset}</p>
+                                     <p className="text-[10px] text-white/40">To: {tx.to?.slice(0, 6)}...{tx.to?.slice(-4)}</p>
+                                  </div>
+                               </div>
+                               <div className="text-right">
+                                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase border ${
+                                      tx.status === 'confirmed' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-white/10 text-white/50 border-white/10'
+                                  }`}>
+                                    {tx.status}
+                                  </span>
+                                  <p className="text-[10px] text-white/30 mt-1">{new Date(tx.timestamp).toLocaleDateString()}</p>
+                               </div>
+                            </div>
+                         </div>
+                       ))
+                     )}
+                 </div>
               </div>
-            </div>
+
+              {/* Quick Actions (lg:col-span-1 = 33%) */}
+              <div className="lg:col-span-1 glass-panel p-6 rounded-2xl flex flex-col justify-center">
+                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-yellow-400">bolt</span> Quick Actions
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+                  <Link to="/lend" className="flex items-center gap-4 p-4 rounded-xl bg-[#0f0518] border border-white/5 hover:border-pink-500/30 transition-all group">
+                    <div className="size-10 rounded-full bg-pink-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <span className="material-symbols-outlined text-pink-400">search</span>
+                    </div>
+                    <span className="text-sm font-bold text-white/80">Find Loans</span>
+                  </Link>
+                  <Link to="/borrow" className="flex items-center gap-4 p-4 rounded-xl bg-[#0f0518] border border-white/5 hover:border-pink-500/30 transition-all group">
+                    <div className="size-10 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <span className="material-symbols-outlined text-blue-400">add_circle</span>
+                    </div>
+                    <span className="text-sm font-bold text-white/80">Request Loan</span>
+                  </Link>
+                  <Link to="/wallet" className="flex items-center gap-4 p-4 rounded-xl bg-[#0f0518] border border-white/5 hover:border-pink-500/30 transition-all group">
+                    <div className="size-10 rounded-full bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <span className="material-symbols-outlined text-purple-400">account_balance_wallet</span>
+                    </div>
+                    <span className="text-sm font-bold text-white/80">Wallet</span>
+                  </Link>
+                </div>
+              </div>
+
           </div>
         </div>
       </div>

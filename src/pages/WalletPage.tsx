@@ -1,9 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { SUPPORTED_ASSETS } from '../config/constants';
+import { db } from '../config/firebase';
+import { collection, addDoc } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import { formatEther, parseEther, JsonRpcProvider, Contract } from 'ethers';
 import { QIE_CHAIN_CONFIG, CONTRACT_ADDRESSES, ERC20_ABI } from '../config/blockchain';
+import confetti from 'canvas-confetti';
+import ProcessingModal from '../components/ProcessingModal';
 
 // Helper Component for Faucet
 const FaucetButton = ({ symbol, address, amount }: { symbol: string, address: string, amount: string }) => {
@@ -69,10 +73,41 @@ const FaucetButton = ({ symbol, address, amount }: { symbol: string, address: st
 };
 
 const WalletPage: React.FC = () => {
-  const { user, openWalletModal, showToast, provider } = useAuth();
+  const { user, openWalletModal, showToast, provider, signer } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [qieBalance, setQieBalance] = useState('0.00');
   const [tokenBalances, setTokenBalances] = useState({ USDT: '0.00', WBTC: '0.00' });
+
+  // Modal States
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [sendAsset, setSendAsset] = useState<string>('QIE');
+  const [sendAmount, setSendAmount] = useState('');
+  const [recipient, setRecipient] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  
+  // Processing Modal State
+  const [showProcessModal, setShowProcessModal] = useState(false);
+  const [isTxSuccess, setIsTxSuccess] = useState(false);
+
+  const fireConfetti = () => {
+    const duration = 3000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 21000 };
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+      if (timeLeft <= 0) return clearInterval(interval);
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+    }, 250);
+  };
+
+  const handleComingSoon = (feature: string) => {
+    showToast(`${feature} coming soon! 🚀`, 'info');
+  };
 
   const fetchBalance = async () => {
     if (user?.walletAddress) {
@@ -93,7 +128,7 @@ const WalletPage: React.FC = () => {
                 if (address) {
                     const contract = new Contract(address, ERC20_ABI, rpcProvider);
                     const rawBalance = await contract.balanceOf(user.walletAddress);
-                    // Assuming 18 decimals for mocks. in prod, call decimals()
+                    // Assuming 18 decimals for production
                     newBalances[symbol] = formatEther(rawBalance); 
                 }
             }
@@ -118,8 +153,81 @@ const WalletPage: React.FC = () => {
     }, 500);
   };
 
-  const handleSend = () => {
-    showToast("Transaction signing triggered. Confirm in your wallet extension.", "info");
+  const handleSendSubmit = async () => {
+      if (!user?.walletAddress || !signer) return;
+      if (!recipient || !sendAmount) return showToast("Please fill all fields", "error");
+      
+      setShowSendModal(false); // Close input modal
+      setShowProcessModal(true);
+      setIsSending(true);
+      setIsTxSuccess(false);
+
+      try {
+          const amountWei = parseEther(sendAmount);
+          let tx;
+
+          if (sendAsset === 'QIE') {
+              // Check Native Balance
+              if (parseEther(qieBalance) < amountWei) {
+                  throw new Error("Insufficient QIE Balance (need gas + amount)");
+              }
+
+              // Native Send
+              tx = await signer.sendTransaction({
+                  to: recipient,
+                  value: amountWei
+              });
+          } else {
+              // Check Token Balance
+              const currentBal = tokenBalances[sendAsset as keyof typeof tokenBalances];
+              if (parseEther(currentBal) < amountWei) {
+                  throw new Error(`Insufficient ${sendAsset} Balance`);
+              }
+
+              // ERC20 Send
+              const tokenAddress = CONTRACT_ADDRESSES[sendAsset as keyof typeof CONTRACT_ADDRESSES];
+              if (!tokenAddress) throw new Error("Invalid asset");
+              const contract = new Contract(tokenAddress, ERC20_ABI, signer);
+              
+              tx = await contract.transfer(recipient, amountWei);
+          }
+
+          // Transaction Sent - Wait for confirmation
+          await tx.wait();
+          
+          setIsTxSuccess(true);
+          fireConfetti();
+          
+          // Log to 'loans' collection (Piggyback strategy) due to permission issues
+          try {
+              await addDoc(collection(db, "loans"), {
+                  type: 'wallet_tx', // Distinguish from actual loans
+                  borrowerId: user.id, // Use borrowerId so it appears in user's 'loans' query
+                  borrowerName: user.firstName || 'User',
+                  asset: sendAsset,
+                  amount: Number(sendAmount),
+                  to: recipient,
+                  hash: tx.hash,
+                  status: 'confirmed',
+                  createdAt: new Date(), // Match loan timestamp format
+                  timestamp: new Date().toISOString()
+              });
+          } catch (logErr: any) {
+              console.error("Failed to log transaction:", logErr);
+              showToast("Tx confirmed, but history log failed: " + logErr.message, "error");
+          }
+
+          setSendAmount('');
+          setRecipient('');
+          fetchBalance(); // Update balances
+      } catch (e: any) {
+          console.error(e);
+          setShowProcessModal(false); // Close modal on error to show toast
+          setShowSendModal(true); // Re-open input modal
+          showToast("Send failed: " + (e.reason || e.message), "error");
+      } finally {
+          setIsSending(false);
+      }
   };
 
   // Calculate Total Net Worth correctly using SUPPORTED_ASSETS prices
@@ -133,6 +241,15 @@ const WalletPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-10 lg:px-20 py-8 relative">
+       <ProcessingModal 
+        isOpen={showProcessModal} 
+        onClose={() => setShowProcessModal(false)} 
+        title="Sending Assets"
+        subtitle={`Sending ${sendAmount} ${sendAsset} on QIE Chain...`}
+        successTitle="Transfer Complete!"
+        successMessage={`Successfully sent ${sendAmount} ${sendAsset}`}
+        isSuccess={isTxSuccess}
+      />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">My Assets</h1>
@@ -190,9 +307,9 @@ const WalletPage: React.FC = () => {
                   <span className="text-white/30 text-xs font-bold uppercase tracking-widest">Total Net Worth</span>
                 </div>
                 <div className="flex flex-wrap gap-4 mt-4">
-                  <ActionButton icon="add" label="Receive" color="green" />
-                  <ActionButton icon="send" label="Send" color="blue" />
-                  <ActionButton icon="swap_horiz" label="Convert" color="purple" />
+                  <ActionButton icon="add" label="Receive" color="green" onClick={() => setShowReceiveModal(true)} />
+                  <ActionButton icon="send" label="Send" color="blue" onClick={() => setShowSendModal(true)} />
+                  <ActionButton icon="swap_horiz" label="Convert" color="purple" onClick={() => handleComingSoon("Swapping")} />
                 </div>
               </div>
             </div>
@@ -214,7 +331,9 @@ const WalletPage: React.FC = () => {
                   </p>
                 </div>
 
-                <button className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-semibold text-sm">
+                <button 
+                  onClick={() => handleComingSoon("Staking")}
+                  className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-semibold text-sm">
                   Stake My QIE
                 </button>
               </div>
@@ -285,6 +404,29 @@ const WalletPage: React.FC = () => {
                <p className="text-xs text-white/40 mb-6">Mint free tokens to test the protocol.</p>
                
                <div className="space-y-4">
+                  {/* Native QIE Faucet */}
+                  <div className="flex items-center gap-2">
+                       <a 
+                           href="https://www.qie.digital/faucet"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className="flex-1 py-2 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 text-xs font-bold text-pink-400 transition-all flex items-center justify-center gap-2 no-underline"
+                       >
+                           <span className="material-symbols-outlined text-[14px]">volunteer_activism</span>
+                           Get Native QIE
+                       </a>
+                       <button 
+                           onClick={() => {
+                               navigator.clipboard.writeText(user?.walletAddress || '');
+                               showToast("Address copied!", "success");
+                           }}
+                           className="size-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                           title="Copy Address to Paste in Faucet"
+                       >
+                           <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                       </button>
+                  </div>
+
                   <FaucetButton symbol="USDT" address={CONTRACT_ADDRESSES.USDT} amount="1.0" />
                   <FaucetButton symbol="WBTC" address={CONTRACT_ADDRESSES.WBTC} amount="0.000015" />
                </div>
@@ -292,12 +434,101 @@ const WalletPage: React.FC = () => {
           </div>
         </>
       )}
+      
+      {/* Send Modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+             <div className="w-full max-w-md bg-[#1e0b2e] border border-white/10 rounded-3xl p-6 relative">
+                 <button onClick={() => setShowSendModal(false)} className="absolute top-4 right-4 text-white/50 hover:text-white material-symbols-outlined">close</button>
+                 <h2 className="text-xl font-bold text-white mb-6">Send Assets</h2>
+                 
+                 <div className="space-y-4">
+                     <div>
+                         <label className="text-xs text-white/50 block mb-1">Select Asset</label>
+                         <div className="flex gap-2">
+                             {['QIE', 'USDT', 'WBTC'].map(asset => (
+                                 <button 
+                                    key={asset}
+                                    onClick={() => setSendAsset(asset)}
+                                    className={`px-4 py-2 rounded-lg border text-sm font-bold transition-all ${sendAsset === asset ? 'bg-pink-500/20 border-pink-500 text-pink-400' : 'bg-white/5 border-white/10 text-white/60'}`}
+                                 >
+                                     {asset}
+                                 </button>
+                             ))}
+                         </div>
+                     </div>
+                     <div>
+                         <label className="text-xs text-white/50 block mb-1">Recipient Address</label>
+                         <input 
+                            type="text" 
+                            value={recipient}
+                            onChange={(e) => setRecipient(e.target.value)}
+                            placeholder="0x..." 
+                            className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-pink-500/50"
+                         />
+                     </div>
+                     <div>
+                         <label className="text-xs text-white/50 block mb-1">Amount</label>
+                         <div className="relative">
+                             <input 
+                                type="number" 
+                                value={sendAmount}
+                                onChange={(e) => setSendAmount(e.target.value)}
+                                placeholder="0.00" 
+                                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-pink-500/50"
+                             />
+                             <span className="absolute right-4 top-3 text-white/40 text-sm font-bold">{sendAsset}</span>
+                         </div>
+                         <div className="text-right mt-1">
+                             <span className="text-[10px] text-white/40">Balance: {sendAsset === 'QIE' ? qieBalance : tokenBalances[sendAsset as keyof typeof tokenBalances]} {sendAsset}</span>
+                         </div>
+                     </div>
+                     
+                     <button 
+                        onClick={handleSendSubmit}
+                        disabled={isSending}
+                        className="w-full py-4 mt-2 rounded-xl bg-gradient-primary text-white font-bold shadow-lg hover:shadow-pink-500/20 disabled:opacity-50 transition-all flex justify-center items-center gap-2"
+                     >
+                        {isSending ? <span className="animate-spin material-symbols-outlined">progress_activity</span> : 'Confirm Send'}
+                     </button>
+                 </div>
+             </div>
+        </div>
+      )}
+
+      {/* Receive Modal */}
+      {showReceiveModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+             <div className="w-full max-w-sm bg-[#1e0b2e] border border-white/10 rounded-3xl p-8 relative text-center">
+                 <button onClick={() => setShowReceiveModal(false)} className="absolute top-4 right-4 text-white/50 hover:text-white material-symbols-outlined">close</button>
+                 <h2 className="text-xl font-bold text-white mb-2">Receive Assets</h2>
+                 <p className="text-white/40 text-sm mb-6">Scan code or copy address to deposit.</p>
+                 
+                 <div className="bg-white p-4 rounded-xl inline-block mb-6">
+                     <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${user?.walletAddress}`} alt="QR Code" className="size-32" />
+                 </div>
+                 
+                 <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2 overflow-hidden">
+                     <span className="text-xs text-white/60 font-mono truncate">{user?.walletAddress}</span>
+                     <button 
+                        onClick={() => {
+                            navigator.clipboard.writeText(user?.walletAddress || '');
+                            showToast("Address copied!", "success");
+                        }}
+                        className="p-2 hover:bg-white/10 rounded-lg text-pink-400"
+                     >
+                         <span className="material-symbols-outlined text-sm">content_copy</span>
+                     </button>
+                 </div>
+             </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const ActionButton = ({ icon, label, color }: any) => (
-  <button className="flex-1 min-w-[120px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all text-white font-semibold text-xs">
+const ActionButton = ({ icon, label, color, onClick }: any) => (
+  <button onClick={onClick} className="flex-1 min-w-[120px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all text-white font-semibold text-xs">
     <div className={`p-1.5 rounded-full bg-${color}-500/20 text-${color}-400`}>
       <span className="material-symbols-outlined text-[16px]">{icon}</span>
     </div>
