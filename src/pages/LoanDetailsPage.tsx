@@ -384,7 +384,7 @@ const LoanDetailsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <InfoBox label="Principal" value={`${loan.amount} ${loan.asset}`} />
@@ -415,42 +415,8 @@ const LoanDetailsPage: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-[#1e0b2e]/60 border border-white/5 rounded-2xl p-6">
-            <h3 className="text-xs font-black text-white/30 uppercase tracking-widest mb-6">Borrower Stats</h3>
-            <div className="flex items-center gap-4 mb-6">
-              <img className="size-14 rounded-full border-2 border-pink-500/50" src={loan.borrowerAvatar} alt="Borrower" />
-              <div>
-                <Link to={`/profile/${loan.borrowerId}`} className="font-bold text-white text-lg hover:text-pink-400 transition-colors cursor-pointer">
-                  {loan.borrowerName}
-                </Link>
-                <div className="flex items-center gap-1">
-                   <span className="material-symbols-outlined text-[14px] text-green-400">verified</span>
-                   <span className="text-[10px] text-green-400 font-bold uppercase">KYC Verified</span>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-               <div className="flex justify-between items-center text-sm">
-                  <span className="text-white/40">Trust Score</span>
-                  <span className={`font-bold ${borrowerStats.trustScore >= 80 ? 'text-green-400' : borrowerStats.trustScore >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                    {borrowerStats.trustScore} / 100
-                  </span>
-               </div>
-               <div className="flex justify-between items-center text-sm">
-                  <span className="text-white/40">Total Loans</span>
-                  <span className="text-white font-bold">{borrowerStats.totalLoans}</span>
-               </div>
-               <div className="flex justify-between items-center text-sm">
-                  <span className="text-white/40">Repayment Rate</span>
-                  <span className={`font-bold ${borrowerStats.repaymentRate >= 80 ? 'text-green-400' : borrowerStats.repaymentRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                    {borrowerStats.repaymentRate}%
-                  </span>
-               </div>
-            </div>
-          </div>
-
           {/* Loan Timeline */}
-          <div className="bg-[#1e0b2e]/60 border border-white/5 rounded-2xl p-6">
+          <div className="bg-[#1e0b2e]/60 border border-white/5 rounded-2xl p-6 h-full">
             <h3 className="text-xs font-black text-white/30 uppercase tracking-widest mb-4">Loan Timeline</h3>
             <div className="space-y-3">
               {loan.createdAt && (
@@ -483,29 +449,75 @@ const LoanDetailsPage: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Lender Stats - Show only when loan is funded */}
-          {loan.lenderId && lender && (
-            <div className="bg-[#1e0b2e]/60 border border-white/5 rounded-2xl p-6">
-              <h3 className="text-xs font-black text-white/30 uppercase tracking-widest mb-6">Lender Details</h3>
-              <div className="flex items-center gap-4 mb-4">
-                <img className="size-14 rounded-full border-2 border-purple-500/50" src={lender.avatar} alt="Lender" />
-                <div>
-                  <Link to={`/profile/${loan.lenderId}`} className="font-bold text-white text-lg hover:text-purple-400 transition-colors cursor-pointer">
-                    {loan.lenderName}
-                  </Link>
-                  <div className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px] text-green-400">verified</span>
-                    <span className="text-[10px] text-green-400 font-bold uppercase">KYC Verified</span>
-                  </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-[#1e0b2e]/60 border border-white/5 rounded-2xl p-6">
+          <h3 className="text-xs font-black text-white/30 uppercase tracking-widest mb-6">Borrower Stats</h3>
+          <div className="flex items-center gap-4 mb-6">
+            <img className="size-14 rounded-full border-2 border-pink-500/50" src={loan.borrowerAvatar} alt="Borrower" />
+            <div>
+              <Link to={`/profile/${loan.borrowerId}`} className="font-bold text-white text-lg hover:text-pink-400 transition-colors cursor-pointer">
+                {loan.borrowerName}
+              </Link>
+              <div className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-green-400">verified</span>
+                  <span className="text-[10px] text-green-400 font-bold uppercase">KYC Verified</span>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-white/40">Trust Score</span>
+                <span className={`font-bold ${borrowerStats.trustScore >= 80 ? 'text-green-400' : borrowerStats.trustScore >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                  {borrowerStats.trustScore} / 100
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-white/40">Total Loans</span>
+                <span className="text-white font-bold">{borrowerStats.totalLoans}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-white/40">Repayment Rate</span>
+                <span className={`font-bold ${borrowerStats.repaymentRate >= 80 ? 'text-green-400' : borrowerStats.repaymentRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                  {borrowerStats.repaymentRate}%
+                </span>
+              </div>
+          </div>
+        </div>
+
+        {/* Lender Stats - Show only when loan is funded */}
+        {loan.lenderId && lender ? (
+          <div className="bg-[#1e0b2e]/60 border border-white/5 rounded-2xl p-6">
+            <h3 className="text-xs font-black text-white/30 uppercase tracking-widest mb-6">Lender Details</h3>
+            <div className="flex items-center gap-4 mb-4">
+              <img className="size-14 rounded-full border-2 border-purple-500/50" src={lender.avatar} alt="Lender" />
+              <div>
+                <Link to={`/profile/${loan.lenderId}`} className="font-bold text-white text-lg hover:text-purple-400 transition-colors cursor-pointer">
+                  {loan.lenderName}
+                </Link>
+                <div className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-green-400">verified</span>
+                  <span className="text-[10px] text-green-400 font-bold uppercase">KYC Verified</span>
                 </div>
               </div>
-              {loan.fundedAt && (
-                <p className="text-xs text-white/40">Funded on {new Date(loan.fundedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-              )}
             </div>
-          )}
-        </div>
+            {loan.fundedAt && (
+              <p className="text-xs text-white/40">Funded on {new Date(loan.fundedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            )}
+          </div>
+        ) : (
+            <div className="bg-[#1e0b2e]/30 border border-white/5 rounded-2xl p-6 flex items-center justify-center border-dashed">
+                <div className="text-center">
+                    <div className="size-12 rounded-full bg-white/5 mx-auto flex items-center justify-center mb-3">
+                        <span className="material-symbols-outlined text-white/20">person_add</span>
+                    </div>
+                    <p className="text-white/30 text-sm font-bold">Waiting for Lender</p>
+                    <p className="text-white/20 text-xs">Once funded, lender details will appear here.</p>
+                </div>
+             </div>
+        )}
       </div>
     </div>
   );

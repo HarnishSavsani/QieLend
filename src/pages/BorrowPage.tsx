@@ -303,7 +303,7 @@ const BorrowPage: React.FC = () => {
                         
                         {showBorrowDropdown && (
                           <div className="absolute top-full right-0 mt-2 w-40 bg-[#1e0b2e] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in zoom-in-95 fade-in duration-200">
-                            {SUPPORTED_ASSETS.map(asset => (
+                            {SUPPORTED_ASSETS.filter(a => ['QIE', 'USDT', 'WBTC'].includes(a.symbol)).map(asset => (
                               <button
                                 key={asset.symbol}
                                 type="button"
