@@ -30,6 +30,26 @@ const LendPage: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
+  const [filterAsset, setFilterAsset] = useState<string>('ALL');
+  const [filterRisk, setFilterRisk] = useState<string>('ALL');
+  const [sortOption, setSortOption] = useState<string>('Newest');
+
+  // Filter & Sort Logic
+  const processedLoans = loans.filter(loan => {
+      if (filterAsset !== 'ALL' && loan.asset !== filterAsset) return false;
+      
+      if (filterRisk !== 'ALL') {
+          const risk = loan.ltv < 40 ? 'LOW' : loan.ltv < 65 ? 'MED' : 'HIGH';
+          if (risk !== filterRisk) return false;
+      }
+      return true;
+  }).sort((a, b) => {
+      if (sortOption === 'Highest Yield') return b.apy - a.apy;
+      if (sortOption === 'Lowest Risk') return a.ltv - b.ltv;
+      // Default Newest (using createdAt seconds if available, else 0)
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+  });
+
   return (
     <div className="max-w-[1400px] mx-auto relative z-10 px-4 md:px-10 lg:px-20 py-8">
       <div className="flex flex-col lg:flex-row justify-between items-end gap-6 mb-10">
@@ -45,20 +65,59 @@ const LendPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 flex flex-col gap-6">
+          {/* FILTER BAR */}
+          <div className="flex flex-wrap items-center gap-3 p-1">
+             {/* Asset Filter */}
+             <div className="flex items-center gap-1 bg-[#1e0b2e]/60 border border-white/10 rounded-lg p-1">
+                {['ALL', 'QIE', 'USDT', 'WBTC'].map(asset => (
+                    <button
+                        key={asset}
+                        onClick={() => setFilterAsset(asset)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${filterAsset === asset ? 'bg-pink-500 text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                    >
+                        {asset}
+                    </button>
+                ))}
+             </div>
+
+             {/* Risk Filter */}
+             <select 
+                value={filterRisk}
+                onChange={(e) => setFilterRisk(e.target.value)}
+                className="bg-[#1e0b2e]/60 border border-white/10 text-white/70 text-xs font-bold rounded-lg px-3 py-2 outline-none focus:border-pink-500/50"
+             >
+                <option value="ALL">All Risk Levels</option>
+                <option value="LOW">Low Risk (LTV &lt; 40%)</option>
+                <option value="MED">Medium Risk</option>
+                <option value="HIGH">High Risk</option>
+             </select>
+
+             {/* Sort Filter */}
+             <select 
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="bg-[#1e0b2e]/60 border border-white/10 text-white/70 text-xs font-bold rounded-lg px-3 py-2 outline-none focus:border-pink-500/50 ml-auto"
+             >
+                <option value="Newest">Newest Requests</option>
+                <option value="Highest Yield">Highest Yield (APY)</option>
+                <option value="Lowest Risk">Lowest Risk (LTV)</option>
+             </select>
+          </div>
+
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 bg-[#1e0b2e]/20 rounded-2xl border border-white/5">
               <div className="size-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mb-4"></div>
               <p className="text-white/40 font-bold uppercase tracking-widest text-xs">Syncing QIE Marketplace...</p>
             </div>
-          ) : loans.length === 0 ? (
+          ) : processedLoans.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 bg-[#1e0b2e]/20 rounded-2xl border border-white/5 text-center">
-              <span className="material-symbols-outlined text-5xl text-white/20 mb-4">search_off</span>
-              <p className="text-white/60 font-bold">No external loan requests found.</p>
-              <p className="text-white/30 text-sm mt-2">Check back later or invite others to the platform!</p>
+              <span className="material-symbols-outlined text-5xl text-white/20 mb-4">filter_list_off</span>
+              <p className="text-white/60 font-bold">No loans match your filters.</p>
+              <button onClick={() => { setFilterAsset('ALL'); setFilterRisk('ALL'); }} className="text-pink-400 text-sm font-bold mt-2 hover:underline">Clear Filters</button>
             </div>
           ) : (
             <div className="space-y-4">
-              {loans.map(loan => (
+              {processedLoans.map(loan => (
                 <div key={loan.id} className="group relative bg-[#1e0b2e]/40 border border-white/10 rounded-2xl p-6 hover:bg-[#1e0b2e] hover:border-pink-500/30 transition-all duration-300">
                   <div className="flex flex-col md:flex-row gap-6 items-center">
                     <div className="shrink-0 flex items-center gap-4">

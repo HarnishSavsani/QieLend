@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import { updatePassword } from 'firebase/auth';
+import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import defaultAvatar from '../assets/default-avatar.svg';
 
@@ -12,6 +14,10 @@ const SettingsPage: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+
+  // Password Update State
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
 
   // Notification states
   const [notifSettings, setNotifSettings] = useState({
@@ -43,8 +49,26 @@ const SettingsPage: React.FC = () => {
     setIsSaving(false);
   };
 
-  const handleUpdatePassword = () => {
-    showToast("Password update request sent. Please check your email for instructions.", "success");
+  const handleSubmitPassword = async () => {
+    if (!auth.currentUser) return showToast("User not authenticated", "error");
+    if (newPassword.length < 6) return showToast("Password must be at least 6 characters", "error");
+    
+    setIsSaving(true);
+    try {
+        await updatePassword(auth.currentUser, newPassword);
+        showToast("Password updated successfully!", "success");
+        setNewPassword('');
+        setShowPasswordForm(false);
+    } catch (error: any) {
+        console.error("Password Update Error:", error);
+        if (error.code === 'auth/requires-recent-login') {
+            showToast("Security requires recent login. Please logout and login again.", "error");
+        } else {
+            showToast("Failed to update password: " + error.message, "error");
+        }
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   const handle2FA = () => {
@@ -180,17 +204,43 @@ const SettingsPage: React.FC = () => {
                 <span className="material-symbols-outlined text-pink-400">lock</span> Security Settings
               </h2>
               <div className="space-y-6">
-                <div className="p-5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                  <div>
-                    <h4 className="font-bold text-white text-sm">Update Password</h4>
-                    <p className="text-xs text-white/40">Secure your account with a new password.</p>
+                <div className="p-5 rounded-xl bg-white/5 border border-white/5">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-bold text-white text-sm">Update Password</h4>
+                      <p className="text-xs text-white/40">Secure your account with a new password.</p>
+                    </div>
+                    <button 
+                      onClick={() => setShowPasswordForm(!showPasswordForm)}
+                      className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-bold hover:bg-white/10 transition-all"
+                    >
+                      {showPasswordForm ? 'Cancel' : 'Change'}
+                    </button>
                   </div>
-                  <button 
-                    onClick={handleUpdatePassword}
-                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-bold hover:bg-white/10 transition-all"
-                  >
-                    Change
-                  </button>
+                  
+                  {showPasswordForm && (
+                     <div className="mt-4 pt-4 border-t border-white/5 animate-in slide-in-from-top-2 fade-in">
+                        <div className="flex flex-col md:flex-row gap-3">
+                           <input 
+                              type="password" 
+                              placeholder="New Password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="flex-grow bg-[#0f0518]/50 border border-white/10 rounded-xl py-2 px-4 text-white text-sm focus:border-pink-500/50 outline-none transition-all"
+                           />
+                           <button 
+                              onClick={handleSubmitPassword}
+                              disabled={isSaving || !newPassword}
+                              className="px-6 py-2 rounded-xl bg-pink-500 text-white font-bold text-sm shadow-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                           >
+                              {isSaving ? 'Updating...' : 'Update Password'}
+                           </button>
+                        </div>
+                        <p className="text-[10px] text-white/30 mt-2 ml-1">
+                           * Requires a recent login. If it fails, please logout and login again.
+                        </p>
+                     </div>
+                  )}
                 </div>
                 <div className="p-5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
                   <div>

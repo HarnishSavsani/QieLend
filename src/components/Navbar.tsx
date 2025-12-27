@@ -67,7 +67,7 @@ const Navbar: React.FC<NavbarProps> = ({ isConnected, onConnect }) => {
         <div className="flex items-center gap-4">
           <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`}></div>
-            <span className="text-xs font-medium text-white/80">QIE Mainnet</span>
+            <span className="text-xs font-medium text-white/80">QIE Testnet</span>
           </button>
 
           <div className="flex items-center gap-3 pl-4 border-l border-white/10">

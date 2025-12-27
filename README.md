@@ -1,5 +1,7 @@
 # 💎 QieLend - Decentralized P2P Lending Protocol
 
+![QieLend Cover](public/cover.png)
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-18.x-61DAFB.svg?style=flat&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?style=flat&logo=typescript)
@@ -74,7 +76,13 @@ npm install
 
 ### 3. Configure Environment
 
-Create a `.env` file in the root directory:
+Duplicate the example configuration file:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and fill in your details (API Keys, Private Key, etc):
 
 ```env
 VITE_FIREBASE_API_KEY=your_api_key

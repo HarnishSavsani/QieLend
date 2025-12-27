@@ -365,7 +365,7 @@ const WalletPage: React.FC = () => {
                             <span className="font-bold text-white">QIE Coin</span>
                         </div>
                     </td>
-                    <td className="p-4"><span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/10 font-bold uppercase">QIE MAINNET</span></td>
+                    <td className="p-4"><span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/10 font-bold uppercase">QIE TESTNET</span></td>
                     <td className="p-4 text-right font-bold text-white">{qieBalance}</td>
                   </tr>
                   
