@@ -115,16 +115,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const tempProvider = new BrowserProvider((window as any).ethereum);
             setProvider(tempProvider);
             
-            // Re-initialize signer if we can
+            // Only attempt to get signer if we are already authorized (have accounts)
             try {
-                const _signer = await tempProvider.getSigner();
-                setSigner(_signer);
-                const lendingPool = new Contract(CONTRACT_ADDRESSES.LendingPool, LENDING_POOL_ABI, _signer);
-                const trustScore = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, _signer);
-                setLendingPoolContract(lendingPool);
-                setTrustScoreContract(trustScore);
+                const accounts = await tempProvider.send("eth_accounts", []);
+                if (accounts.length > 0) {
+                    const _signer = await tempProvider.getSigner();
+                    setSigner(_signer);
+                    const lendingPool = new Contract(CONTRACT_ADDRESSES.LendingPool, LENDING_POOL_ABI, _signer);
+                    const trustScore = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, _signer);
+                    setLendingPoolContract(lendingPool);
+                    setTrustScoreContract(trustScore);
+                }
             } catch (e) {
-                // User might not be connected in MM, that's fine
+                // User not connected or error, just ignore
+                console.debug("Auto-connect check failed or no accounts:", e);
             }
         }
     };
