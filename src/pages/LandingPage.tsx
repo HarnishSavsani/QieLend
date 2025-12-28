@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import networkDiagram from '../assets/blog-1.jpg';
 import { useAuth } from '../context/AuthContext';
 
@@ -216,9 +216,9 @@ const LandingPage: React.FC = () => {
                 >
                   Create Account
                 </button>
-                <Link to="/whitepaper" className="px-10 h-14 rounded-full bg-white/5 border border-white/10 text-white font-bold flex items-center justify-center hover:bg-white/10 transition-all duration-300">
+                <a href="/QIE-Whitepaper.pdf" target="_blank" rel="noopener noreferrer" className="px-10 h-14 rounded-full bg-white/5 border border-white/10 text-white font-bold flex items-center justify-center hover:bg-white/10 transition-all duration-300">
                   Read Whitepaper
-                </Link>
+                </a>
               </div>
               
               <p className="mt-8 text-white/30 text-xs font-medium uppercase tracking-widest">
