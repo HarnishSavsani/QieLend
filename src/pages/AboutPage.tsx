@@ -9,7 +9,7 @@ const AboutPage: React.FC = () => {
         <div className="relative z-10 max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-black text-white mb-6">Democratizing Finance</h1>
           <p className="text-xl text-white/60 leading-relaxed">
-            QieLend is built on the belief that financial services should be transparent, efficient, and accessible to everyone. By leveraging the QIE Blockchain, we're removing the middleman and returning value to the users.
+            QieLend operates on the QIE V3 Blockchain, democratizing finance by combining the speed of Cosmos with the flexibility of EVM. We believe in a borderless financial future.
           </p>
         </div>
       </section>
@@ -19,7 +19,7 @@ const AboutPage: React.FC = () => {
           <div>
             <h2 className="text-3xl font-bold text-white mb-6">Our Mission</h2>
             <p className="text-white/50 text-lg leading-relaxed mb-6">
-              To create a global liquidity layer where digital assets can be utilized without friction. We aim to become the standard for peer-to-peer lending on the QIE network, offering institutional-grade security to retail users.
+              To create a global liquidity layer where digital assets can be utilized without friction. QIE's 30,000 TPS and 1-second finality allow us to offer institutional-grade speed to every retail user.
             </p>
             <div className="space-y-4">
               <div className="flex gap-4 items-start">
@@ -40,7 +40,7 @@ const AboutPage: React.FC = () => {
             <div className="absolute -top-4 -right-4 size-24 bg-pink-500/20 blur-2xl rounded-full"></div>
             <h3 className="text-2xl font-bold text-white mb-4">Why We Started</h3>
             <p className="text-white/40 leading-relaxed italic">
-              "We saw a gap in the DeFi ecosystem. Centralized exchanges were too risky, and traditional P2P platforms were too slow. QIE technology gave us the tools to build something better—a platform that is actually owned by its users."
+              "We saw a gap in the DeFi ecosystem. QIE V2 laid the foundation, but V3's dual ecosystem (EVM + Cosmos) finally gave us the tools to build a truly scalable, user-owned platform."
             </p>
             <div className="mt-8 flex items-center gap-4">
               <div className="size-12 rounded-full bg-gradient-to-br from-pink-500 to-purple-600"></div>

@@ -11,9 +11,9 @@ const TechPage: React.FC = () => {
           <h1 className="text-4xl md:text-5xl font-black text-white mb-8">Unrivaled Performance on QIE</h1>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-            <TechMetric label="TPS" value="100,000+" desc="Transactions per second" />
+            <TechMetric label="TPS" value="30,000+" desc="Transactions per second" />
             <TechMetric label="Finality" value="< 1s" desc="Deterministic finality" />
-            <TechMetric label="Avg. Fee" value="$0.0001" desc="Ultra-low gas costs" />
+            <TechMetric label="Avg. Fee" value="~0" desc="Gas fees burned automatically" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
@@ -24,16 +24,16 @@ const TechPage: React.FC = () => {
                   Smart Liquidation Engine
                 </h3>
                 <p className="text-white/50 leading-relaxed">
-                  Our proprietary engine monitors collateral prices via decentralized oracles every 500ms. Liquidation only occurs when the LTV exceeds the safety threshold, handled entirely by immutable smart contracts.
+                  Our engine integrates directly with QIE's Tendermint Core consensus for finality in 1-2 seconds. Liquidation is handled by immutable smart contracts with zero delay.
                 </p>
               </div>
               <div className="p-8 rounded-2xl bg-white/5 border border-white/5 group hover:border-purple-500/30 transition-all">
                 <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
                   <span className="material-symbols-outlined text-purple-500">hub</span>
-                  Multi-Chain Bridge
+                  EVM + Cosmos Dual Stack
                 </h3>
                 <p className="text-white/50 leading-relaxed">
-                  Borrow against assets from Ethereum, Bitcoin, and Solana. QIE's native bridging technology ensures your cross-chain assets are wrapped securely with 1:1 backing.
+                  QIE V3 supports both EVM (0x...) and native QIE wallets. Our platform bridges these seamlessly, allowing you to use MetaMask or Keplr to manage assets.
                 </p>
               </div>
             </div>

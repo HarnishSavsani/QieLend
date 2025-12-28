@@ -43,20 +43,20 @@ const StakingPage: React.FC = () => {
             <div className="flex-1">
               <h2 className="text-3xl font-bold text-white mb-6">Start Earning Rewards</h2>
               <p className="text-white/50 mb-8 leading-relaxed">
-                Staking QIE gives you "vQIE" power, which allows you to vote on protocol upgrades, asset additions, and interest rate adjustments.
+                Validators and Delegators share 1,808 QIE in daily rewards. Staking also lowers the circulating supply, increasing scarcity through the built-in fee burn mechanism.
               </p>
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center gap-3 text-white/80">
                   <span className="material-symbols-outlined text-green-400">verified</span>
-                  Compounding rewards every block
+                  Daily Rewards (1,808 QIE emitted/day)
+                </li>
+                <li className="flex items-center gap-3 text-white/80">
+                  <span className="material-symbols-outlined text-green-400">verified</span>
+                  Deflationary (Gas fees burned)
                 </li>
                 <li className="flex items-center gap-3 text-white/80">
                   <span className="material-symbols-outlined text-green-400">verified</span>
                   Governance voting rights
-                </li>
-                <li className="flex items-center gap-3 text-white/80">
-                  <span className="material-symbols-outlined text-green-400">verified</span>
-                  Early access to new lending pools
                 </li>
               </ul>
               <button 

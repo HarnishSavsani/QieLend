@@ -21,20 +21,34 @@ const DevelopersPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
             <div className="bg-[#1e0b2e] border border-white/10 rounded-3xl p-8">
-              <h3 className="text-2xl font-bold text-white mb-6">Quick Start (JS SDK)</h3>
+              <h3 className="text-2xl font-bold text-white mb-6">Network Configuration</h3>
+              <div className="flex flex-col gap-4 mb-8">
+                 <div className="p-4 rounded-xl bg-white/5">
+                    <p className="text-pink-400 text-xs font-bold uppercase tracking-widest mb-2">Mainnet (Chain ID: 1990)</p>
+                    <code className="text-white/70 text-sm block break-all">https://rpc1mainnet.qie.digital/</code>
+                    <code className="text-white/70 text-sm block">Currency: QIEV3</code>
+                 </div>
+                 <div className="p-4 rounded-xl bg-white/5">
+                    <p className="text-purple-400 text-xs font-bold uppercase tracking-widest mb-2">Testnet (Chain ID: 1983)</p>
+                    <code className="text-white/70 text-sm block break-all">https://rpc1testnet.qie.digital/</code>
+                    <code className="text-white/70 text-sm block">Faucets Available</code>
+                 </div>
+              </div>
+
+              <h3 className="text-2xl font-bold text-white mb-6">Deploy with Hardhat</h3>
               <div className="bg-[#0f0518] rounded-2xl p-6 font-mono text-sm text-pink-400 border border-white/5 overflow-x-auto">
                 <pre>
-{`// Install SDK
-npm install @qielend/sdk
-
-// Initialize Client
-const client = new QieLendClient({
-  network: 'mainnet',
-  provider: window.qie
-});
-
-// Fetch active rates
-const rates = await client.getRates('USDT');`}
+{`// hardhat.config.js
+module.exports = {
+  solidity: "0.8.20",
+  networks: {
+    qie: {
+      url: "https://rpc1mainnet.qie.digital/",
+      chainId: 1990,
+      accounts: [PRIVATE_KEY]
+    }
+  }
+};`}
                 </pre>
               </div>
             </div>

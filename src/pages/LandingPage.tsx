@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import networkDiagram from '../assets/blog-1.jpg';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,32 +27,56 @@ const LandingPage: React.FC = () => {
           <div className="flex-1 flex flex-col gap-6 text-center lg:text-left z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 w-fit mx-auto lg:mx-0 backdrop-blur-sm">
               <span className="flex h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
-              <span className="text-xs font-medium text-pink-300 tracking-wide uppercase">Powered by QIE Blockchain</span>
+              <span className="text-xs font-medium text-pink-300 tracking-wide uppercase">Powered by QIE V3 Blockchain</span>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-[-0.033em] text-white">
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-[-0.033em] text-white"
+            >
               Next-Gen Lending <br/>
               <span className="text-gradient">Faster. Safer. Smarter.</span>
-            </h1>
-            <h2 className="text-lg text-white/70 font-normal leading-relaxed max-w-2xl mx-auto lg:mx-0">
+            </motion.h1>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-lg text-white/70 font-normal leading-relaxed max-w-2xl mx-auto lg:mx-0"
+            >
               Experience instant P2P loans with minimal fees and maximum security. QIE technology ensures seamless transactions and unbeatable efficiency for your digital assets.
-            </h2>
-            <div className="flex flex-wrap gap-4 justify-center lg:justify-start pt-4">
-              <button 
+            </motion.h2>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="flex flex-wrap gap-4 justify-center lg:justify-start pt-4"
+            >
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => handleProtectedAction('/borrow')}
-                className="flex items-center justify-center rounded-full h-12 px-8 bg-gradient-primary text-white text-base font-bold shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] hover:scale-105 transition-all duration-300"
+                className="flex items-center justify-center rounded-full h-12 px-8 bg-gradient-primary text-white text-base font-bold shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all duration-300"
               >
                 Get Instant Loan
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => handleProtectedAction('/lend')}
                 className="flex items-center justify-center rounded-full h-12 px-8 bg-white/5 border border-white/20 text-white hover:bg-white/10 transition-colors text-base font-bold backdrop-blur-sm"
               >
                 View Rates
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           </div>
 
-          <div className="w-full max-w-[480px] lg:w-[450px] shrink-0 z-10">
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-full max-w-[480px] lg:w-[450px] shrink-0 z-10"
+          >
             <div className="rounded-2xl border border-white/10 bg-[#1e0b2e]/60 backdrop-blur-xl p-6 shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-5 transition-opacity duration-500 pointer-events-none"></div>
               <div className="mb-6 flex justify-between items-start">
@@ -93,14 +118,16 @@ const LandingPage: React.FC = () => {
                   <span className="font-bold text-green-400">-1.5% Bonus</span>
                 </div>
               </div>
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleProtectedAction('/borrow')}
-                className="w-full h-14 rounded-xl bg-gradient-primary text-white font-bold text-lg shadow-lg flex items-center justify-center hover:shadow-pink-500/20 hover:-translate-y-0.5 transition-all"
+                className="w-full h-14 rounded-xl bg-gradient-primary text-white font-bold text-lg shadow-lg flex items-center justify-center hover:shadow-pink-500/20 transition-all"
               >
                 Apply Now
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -127,9 +154,9 @@ const LandingPage: React.FC = () => {
             <p className="text-white/60 max-w-2xl mx-auto text-lg">Powered by the revolutionary QIE blockchain, we offer features that traditional platforms simply cannot match.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <FeatureCard title="QIE Speed & Efficiency" desc="Forget waiting hours for confirmations. QIE technology enables near-instant loan settlements and collateral transfers." icon="speed" color="pink" />
-            <FeatureCard title="Enhanced Security" desc="Leveraging QIE's advanced cryptographic protocols, your assets are protected by next-generation smart contract audits." icon="verified_user" color="purple" />
-            <FeatureCard title="Superior Rates" desc="The low transaction costs of the QIE network allow us to pass savings directly to you, offering the most competitive APYs." icon="percent" color="pink" />
+            <FeatureCard title="30,000 TPS Speed" desc="Forget waiting. QIE V3's sub-second finality enables instant loan settlements and collateral transfers." icon="speed" color="pink" />
+            <FeatureCard title="Dual Ecosystem Security" desc="Leveraging QIE's EVM + Cosmos architecture, your assets are protected by next-gen consensus." icon="verified_user" color="purple" />
+            <FeatureCard title="Near-Zero Fees" desc="The efficient QIE network burns gas fees, keeping transaction costs negligible for maximum APY." icon="percent" color="pink" />
           </div>
         </div>
       </section>
@@ -146,7 +173,7 @@ const LandingPage: React.FC = () => {
               <StepItem 
                 number="1" 
                 title="Connect & Deposit" 
-                desc="Link your wallet and deposit crypto collateral. Supported by QIE multi-chain bridge for easy asset transfer." 
+                desc="Link your EVM or QIE native wallet. QIE's dual-wallet system makes asset transfer seamless." 
               />
               <StepItem 
                 number="2" 
@@ -156,7 +183,7 @@ const LandingPage: React.FC = () => {
               <StepItem 
                 number="3" 
                 title="Receive Funds" 
-                desc="Get USDT or stablecoins directly to your wallet. Repay anytime with ultra-low gas fees." 
+                desc="Get stablecoins instantly. Repay anytime with fees burned to support the QIE ecosystem." 
               />
             </div>
           </div>
@@ -244,13 +271,20 @@ const TickerItem = ({ symbol, supply, borrow, icon, color }: any) => (
 );
 
 const FeatureCard = ({ title, desc, icon, color }: any) => (
-  <div className="p-8 rounded-2xl bg-[#1e0b2e] border border-white/5 hover:border-pink-500/30 transition-all group hover:-translate-y-2 duration-300 shadow-xl text-left">
-    <div className={`size-14 rounded-xl bg-gradient-to-br from-${color}-500/20 to-purple-600/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+  <motion.div 
+    whileHover={{ y: -10 }}
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5 }}
+    className="p-8 rounded-2xl bg-[#1e0b2e] border border-white/5 hover:border-pink-500/30 transition-all shadow-xl text-left"
+  >
+    <div className={`size-14 rounded-xl bg-gradient-to-br from-${color}-500/20 to-purple-600/20 flex items-center justify-center mb-6`}>
       <span className={`material-symbols-outlined text-${color}-400 text-3xl`}>{icon}</span>
     </div>
     <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
     <p className="text-white/60 leading-relaxed text-sm">{desc}</p>
-  </div>
+  </motion.div>
 );
 
 const StepItem = ({ number, title, desc }: any) => (

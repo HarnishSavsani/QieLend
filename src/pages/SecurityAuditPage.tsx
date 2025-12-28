@@ -9,9 +9,9 @@ const SecurityAuditPage: React.FC = () => {
           <div className="size-20 rounded-3xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-8">
             <span className="material-symbols-outlined text-green-400 text-4xl">verified_user</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-6">Security is Our DNA</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-white mb-6">Secured by BFT Consensus</h1>
           <p className="text-lg text-white/50 max-w-2xl mx-auto">
-            Our smart contracts undergo rigorous auditing by the world's leading cybersecurity firms before every deployment.
+            Built on Tendermint Core, the QIE blockchain provides Byzantine Fault Tolerance with instant finality. Our smart contracts add a second layer of immutable security.
           </p>
         </div>
 

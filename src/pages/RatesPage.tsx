@@ -58,14 +58,40 @@ const RatesPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-12 p-8 rounded-2xl bg-pink-500/5 border border-pink-500/10 max-w-2xl">
-            <h4 className="text-white font-bold mb-2 flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">info</span>
-              Dynamic Rate Model
-            </h4>
-            <p className="text-sm text-white/40 leading-relaxed">
-              Rates are calculated based on the supply-to-demand ratio of each asset. High utilization increases borrow costs to encourage repayments and rewards suppliers with higher yields.
-            </p>
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="p-8 rounded-2xl bg-pink-500/5 border border-pink-500/10">
+              <h4 className="text-white font-bold mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">token</span>
+                QIE Tokenomics
+              </h4>
+              <ul className="space-y-3">
+                <li className="flex justify-between text-sm">
+                  <span className="text-white/60">Max Supply</span>
+                  <span className="font-mono text-pink-400">150,000,565 QIE</span>
+                </li>
+                <li className="flex justify-between text-sm">
+                  <span className="text-white/60">Halving Schedule</span>
+                  <span className="font-mono text-white">Every 2 Years</span>
+                </li>
+                <li className="flex justify-between text-sm">
+                  <span className="text-white/60">Circulating Emission</span>
+                  <span className="font-mono text-green-400">1,808 QIE / Day</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div className="p-8 rounded-2xl bg-purple-500/5 border border-purple-500/10">
+              <h4 className="text-white font-bold mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">local_fire_department</span>
+                Deflation Engine
+              </h4>
+              <p className="text-sm text-white/40 leading-relaxed mb-4">
+                Every transaction on QieLend contributes to the protocol's scarcity. A portion of the gas fee is permanently removed from circulation.
+              </p>
+              <div className="text-xs font-mono bg-black/20 p-3 rounded border border-white/5 text-purple-300">
+                Burned Fee = Base Fee × Gas Used
+              </div>
+            </div>
           </div>
         </div>
       </section>

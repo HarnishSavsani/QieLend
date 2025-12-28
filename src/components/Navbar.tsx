@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -38,7 +39,12 @@ const Navbar: React.FC<NavbarProps> = ({ isConnected, onConnect }) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 whitespace-nowrap border-b border-white/5 bg-[#0f0518]/90 backdrop-blur-md px-4 py-3 lg:px-8">
+    <motion.header 
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="sticky top-0 z-50 whitespace-nowrap border-b border-white/5 bg-[#0f0518]/90 backdrop-blur-md px-4 py-3 lg:px-8"
+    >
       <div className="max-w-[1600px] mx-auto flex items-center justify-between">
         <div className="flex items-center gap-10">
           <Link to="/" className="flex items-center gap-3 text-white">
@@ -163,7 +169,7 @@ const Navbar: React.FC<NavbarProps> = ({ isConnected, onConnect }) => {
           )}
         </div>
       )}
-    </header>
+    </motion.header>
   );
 };
 
