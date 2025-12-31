@@ -39,7 +39,11 @@ const SettingsPage: React.FC = () => {
     setIsSaving(true);
     setSaveMessage('');
     try {
-      const newAvatar = defaultAvatar;
+      const fullName = `${firstName} ${lastName}`.trim();
+      const newAvatar = fullName 
+        ? `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random&color=fff&bold=true`
+        : defaultAvatar;
+
       await updateProfile({ firstName, lastName, avatar: newAvatar });
       setSaveMessage('Profile and Avatar updated!');
       setTimeout(() => setSaveMessage(''), 3000);
