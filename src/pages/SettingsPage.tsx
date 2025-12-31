@@ -41,7 +41,7 @@ const SettingsPage: React.FC = () => {
     try {
       const fullName = `${firstName} ${lastName}`.trim();
       const newAvatar = fullName 
-        ? `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random&color=fff&bold=true`
+        ? `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(fullName)}`
         : defaultAvatar;
 
       await updateProfile({ firstName, lastName, avatar: newAvatar });

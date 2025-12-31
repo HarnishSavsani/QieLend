@@ -205,7 +205,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         firstName,
         lastName,
         email,
-        avatar: defaultAvatar,
+        avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${firstName}${lastName}`,
         trustScore: 100,
         createdAt: new Date().toISOString()
       };
@@ -230,7 +230,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           firstName: names[0],
           lastName: names.length > 1 ? names[names.length - 1] : "",
           email: result.user.email || "",
-          avatar: result.user.photoURL || defaultAvatar,
+          avatar: result.user.photoURL || `https://api.dicebear.com/7.x/thumbs/svg?seed=${names.join('')}`,
           trustScore: 100,
           createdAt: new Date().toISOString()
         };
