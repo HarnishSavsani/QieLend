@@ -177,12 +177,38 @@ const LoanDetailsPage: React.FC = () => {
       try {
           // Fetch the EXACT values from the smart contract to avoid precision issues
           const onChainLoan = await lendingPoolContract.getLoan(loan.contractLoanId);
+          
+          // Validation 1: Check if already repaid
+          if (onChainLoan.repaid) {
+             showToast("This loan is already repaid on-chain.", "info");
+             setIsProcessing(false);
+             // Update logic to sync firebase if desirable, but return for now
+             await updateDoc(doc(db, "loans", loan.id), { status: 'repaid' });
+             return;
+          }
+
+          // Validation 2: Check correct wallet
+          const currentAddress = await signer?.getAddress();
+          if (onChainLoan.borrower.toLowerCase() !== currentAddress?.toLowerCase()) {
+              showToast("Wallet mismatch: You must strictly use the borrower wallet.", "error");
+              setIsProcessing(false);
+              return;
+          }
+
           // `onChainLoan.amount` and `onChainLoan.interest` are already in Wei (BigInt)
           const totalWei = onChainLoan.amount + onChainLoan.interest;
 
           showToast(`Repaying ${formatEther(totalWei)} QIE...`, "info");
           
-          const tx = await lendingPoolContract.repayLoan(loan.contractLoanId, { value: totalWei });
+          // Added manual gasLimit to avoid "missing revert data" estimation errors
+          const tx = await lendingPoolContract.repayLoan(
+              loan.contractLoanId, 
+              { 
+                  value: totalWei,
+                  gasLimit: 500000 
+              }
+          );
+          
           await tx.wait();
 
           // Update loan status
@@ -220,7 +246,13 @@ const LoanDetailsPage: React.FC = () => {
           
       } catch (e: any) {
           console.error("Repayment Error:", e);
-          showToast("Repayment failed: " + (e.reason || e.shortMessage || e.message), "error");
+          const errorMessage = e?.reason || e?.shortMessage || e?.message || "Transaction failed";
+          
+          if (errorMessage.includes("insufficient funds")) {
+              showToast("Insufficient balance to repay loan + gas.", "error");
+          } else {
+              showToast("Repayment failed: " + errorMessage, "error");
+          }
           setIsProcessing(false);
       }
   };
