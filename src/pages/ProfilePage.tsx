@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../config/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where, getDocs } from "firebase/firestore";
 import { Contract, JsonRpcProvider } from 'ethers';
 import { CONTRACT_ADDRESSES, TRUST_SCORE_ABI, QIE_CHAIN_CONFIG } from '../config/blockchain';
 
@@ -23,27 +23,37 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     if (!userId) return;
 
-    const fetchProfile = async () => {
-      try {
-        // Fetch User Profile
-        const userSnap = await getDoc(doc(db, "users", userId));
-        if (!userSnap.exists()) {
-          setIsLoading(false);
-          return;
+    // Real-time listener for User Profile
+    const unsubscribe = onSnapshot(doc(db, "users", userId), (docSnap) => {
+        if (docSnap.exists()) {
+            setUser(docSnap.data());
+        } else {
+            setUser(null); // Triggers not found UI
+            setIsLoading(false);
         }
-        const userData = userSnap.data();
-        setUser(userData);
+    }, (err) => {
+        console.error("Failed to subscribe:", err);
+        setIsLoading(false);
+    });
 
+    return () => unsubscribe();
+  }, [userId]);
+
+  // Fetch Stats & History when User data is available/updates
+  useEffect(() => {
+    if (!user || !userId) return;
+
+    const fetchStatsAndHistory = async () => {
+      try {
         // Fetch On-Chain Trust Score (with Firebase cache fallback)
-        let trustScore = userData.trustScore ?? 100; // Start with Firebase cached value
+        let trustScore = user.trustScore ?? 100; 
         try {
           const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
           const trustContract = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, rpcProvider);
-          const score = await trustContract.getScore(userData.walletAddress);
+          const score = await trustContract.getScore(user.walletAddress);
           trustScore = Math.min(100, Number(score));
         } catch (e) {
           console.error("Failed to fetch on-chain trust score, using Firebase cache:", e);
-          // Keep the Firebase cached value set above
         }
 
         // Fetch Borrowing History
@@ -58,16 +68,15 @@ const ProfilePage: React.FC = () => {
         const lendLoans = lendSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         setLendingHistory(lendLoans);
 
-        // Calculate Stats (use Firebase cached repaymentRate if available)
+        // Calculate Stats
         const totalBorrowed = borrowLoans.reduce((acc, l: any) => acc + Number(l.amount || 0), 0);
         const totalLent = lendLoans.reduce((acc, l: any) => acc + Number(l.amount || 0), 0);
         
-        // Calculate repayment rate from loans (or use cached value)
         const repaidLoans = borrowLoans.filter((l: any) => l.status === 'repaid').length;
         const defaultedLoans = borrowLoans.filter((l: any) => l.status === 'defaulted').length;
         const completedLoans = repaidLoans + defaultedLoans;
         const calculatedRepaymentRate = completedLoans > 0 ? Math.round((repaidLoans / completedLoans) * 100) : 100;
-        const repaymentRate = userData.repaymentRate ?? calculatedRepaymentRate;
+        const repaymentRate = user.repaymentRate ?? calculatedRepaymentRate;
 
         setStats({
           trustScore,
@@ -76,15 +85,14 @@ const ProfilePage: React.FC = () => {
           repaymentRate
         });
 
-        setIsLoading(false);
       } catch (e) {
-        console.error("Failed to fetch profile:", e);
-        setIsLoading(false);
+        console.error("Failed to fetch profile stats:", e);
       }
+      setIsLoading(false);
     };
 
-    fetchProfile();
-  }, [userId]);
+    fetchStatsAndHistory();
+  }, [user, userId]);
 
   if (isLoading) {
     return (

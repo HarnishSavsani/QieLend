@@ -39,9 +39,9 @@ const SettingsPage: React.FC = () => {
     setIsSaving(true);
     setSaveMessage('');
     try {
-      const fullName = `${firstName} ${lastName}`.trim();
-      const newAvatar = fullName 
-        ? `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(fullName)}`
+      const seed = `${firstName}${lastName}`.trim();
+      const newAvatar = seed 
+        ? `https://api.dicebear.com/7.x/thumbs/svg?seed=${seed}`
         : defaultAvatar;
 
       await updateProfile({ firstName, lastName, avatar: newAvatar });

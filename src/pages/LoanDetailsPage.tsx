@@ -39,59 +39,9 @@ const LoanDetailsPage: React.FC = () => {
     if (!id) return;
 
     // Real-time listener for the Loan Document
-    const unsubscribe = onSnapshot(doc(db, "loans", id), async (docSnap) => {
+    const unsubscribe = onSnapshot(doc(db, "loans", id), (docSnap) => {
         if (docSnap.exists()) {
-             const loanData: any = { id: docSnap.id, ...docSnap.data() };
-             setLoan(loanData);
-             
-             // Fetch Borrower Profile
-             if (loanData.borrowerId) {
-                  const userSnap = await getDoc(doc(db, "users", loanData.borrowerId));
-                  if (userSnap.exists()) {
-                      const borrowerData = userSnap.data();
-                      setBorrower(borrowerData);
-                      
-                      // Fetch On-Chain Trust Score (with Firebase cache fallback)
-                      try {
-                          const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
-                          const trustContract = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, rpcProvider);
-                          const score = await trustContract.getScore(borrowerData.walletAddress);
-                          
-                          // Fetch Loan History for Stats
-                          const loansQuery = query(collection(db, "loans"), where("borrowerId", "==", loanData.borrowerId));
-                          const loansSnap = await getDocs(loansQuery);
-                          const allLoans = loansSnap.docs.map(d => d.data());
-                          
-                          const totalLoans = allLoans.length;
-                          const repaidLoans = allLoans.filter(l => l.status === 'repaid').length;
-                          const defaultedLoans = allLoans.filter(l => l.status === 'defaulted').length;
-                          const completedLoans = repaidLoans + defaultedLoans;
-                          const repaymentRate = completedLoans > 0 ? Math.round((repaidLoans / completedLoans) * 100) : 100;
-                          
-                          setBorrowerStats({
-                              trustScore: Math.min(100, Number(score)),
-                              totalLoans,
-                              repaymentRate
-                          });
-                      } catch (e) {
-                          console.error("Failed to fetch on-chain stats, using Firebase cache:", e);
-                          // Fallback to Firebase cached values if available
-                          setBorrowerStats({
-                              trustScore: borrowerData.trustScore ?? 100,
-                              totalLoans: 0, // Will be updated below if we can at least query loans
-                              repaymentRate: borrowerData.repaymentRate ?? 100
-                          });
-                      }
-                  }
-             }
-             
-             // Fetch Lender Profile if loan is funded
-             if (loanData.lenderId) {
-               const lenderSnap = await getDoc(doc(db, "users", loanData.lenderId));
-               if (lenderSnap.exists()) {
-                 setLender(lenderSnap.data());
-               }
-             }
+             setLoan({ id: docSnap.id, ...docSnap.data() });
         } else {
              setLoan(null);
         }
@@ -103,6 +53,75 @@ const LoanDetailsPage: React.FC = () => {
 
     return () => unsubscribe();
   }, [id]);
+
+  // Real-time listener for Borrower Profile
+  useEffect(() => {
+    if (!loan?.borrowerId) return;
+    
+    const unsubscribe = onSnapshot(doc(db, "users", loan.borrowerId), (docSnap) => {
+       if (docSnap.exists()) {
+          setBorrower(docSnap.data());
+       }
+    });
+    return () => unsubscribe();
+  }, [loan?.borrowerId]);
+
+  // Real-time listener for Lender Profile
+  useEffect(() => {
+    if (!loan?.lenderId) return;
+    
+    const unsubscribe = onSnapshot(doc(db, "users", loan.lenderId), (docSnap) => {
+       if (docSnap.exists()) {
+          setLender(docSnap.data());
+       }
+    });
+    return () => unsubscribe();
+  }, [loan?.lenderId]);
+
+  // Calculate/Fetch Stats when dependencies change
+  useEffect(() => {
+     if (!borrower || !loan) return;
+
+     const fetchStats = async () => {
+        // 1. Fetch Loan History (Firebase - Reliable)
+        let calculatedStats = { ...borrowerStats };
+        
+        try {
+            const loansQuery = query(collection(db, "loans"), where("borrowerId", "==", loan.borrowerId));
+            const loansSnap = await getDocs(loansQuery);
+            const allLoans = loansSnap.docs.map(d => d.data());
+            
+            const totalLoans = allLoans.length;
+            const repaidLoans = allLoans.filter(l => l.status === 'repaid').length;
+            const defaultedLoans = allLoans.filter(l => l.status === 'defaulted').length;
+            const completedLoans = repaidLoans + defaultedLoans;
+            const repaymentRate = completedLoans > 0 ? Math.round((repaidLoans / completedLoans) * 100) : 100;
+            
+            calculatedStats.totalLoans = totalLoans;
+            calculatedStats.repaymentRate = repaymentRate;
+        } catch (dbError) {
+             console.error("Failed to fetch loan history:", dbError);
+             // Fallback to what's already in the borrower object from the listener
+             calculatedStats.totalLoans = borrowerStats.totalLoans || 0; 
+             calculatedStats.repaymentRate = borrower.repaymentRate ?? 100;
+        }
+
+        // 2. Fetch On-Chain Trust Score (Blockchain - Can Fail)
+        try {
+            const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
+            const trustContract = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, rpcProvider);
+            const score = await trustContract.getScore(borrower.walletAddress);
+            calculatedStats.trustScore = Math.min(100, Number(score));
+        } catch (chainError) {
+            console.error("Failed to fetch on-chain score, using Firebase fallback:", chainError);
+            calculatedStats.trustScore = borrower.trustScore ?? 100;
+        }
+
+        setBorrowerStats(calculatedStats);
+     };
+
+     fetchStats();
+  }, [borrower, loan?.status]);
 
   const fireConfetti = () => {
     const duration = 3000;

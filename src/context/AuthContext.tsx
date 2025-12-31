@@ -205,7 +205,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         firstName,
         lastName,
         email,
-        avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${firstName}${lastName}`,
+        avatar: `https://api.dicebear.com/7.x/thumbs/svg?seed=${firstName.trim()}${lastName.trim()}`,
         trustScore: 100,
         createdAt: new Date().toISOString()
       };
