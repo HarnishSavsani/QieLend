@@ -1,13 +1,13 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../config/firebase';
-import { doc, getDoc, updateDoc, onSnapshot, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
 import ProcessingModal from '../components/ProcessingModal';
 
 import { parseEther, Contract, formatEther, JsonRpcProvider } from 'ethers';
-import { ERC20_ABI, CONTRACT_ADDRESSES, TRUST_SCORE_ABI, QIE_CHAIN_CONFIG } from '../config/blockchain';
+import { TRUST_SCORE_ABI, QIE_CHAIN_CONFIG, CONTRACT_ADDRESSES } from '../config/blockchain';
+import { useUserStats } from '../hooks/useUserStats';
 
 import confetti from 'canvas-confetti';
 
@@ -22,18 +22,18 @@ const LoanDetailsPage: React.FC = () => {
   const [borrower, setBorrower] = useState<any>(null);
   const [lender, setLender] = useState<any>(null);
   
-  // Borrower Stats (Dynamic)
-  const [borrowerStats, setBorrowerStats] = useState({
-    trustScore: 100,
-    totalLoans: 0,
-    repaymentRate: 100
-  });
-
+  // Borrower Stats (Dynamic from Contract)
+  // We need to wait for borrower to be loaded to get their wallet address
+  const { trustScore, loading: scoreLoading } = useUserStats(borrower?.walletAddress);
+  
   // Modal State
   const [modalTitle, setModalTitle] = useState("Processing Transaction");
   const [modalSubtitle, setModalSubtitle] = useState("Please confirm in your wallet...");
   const [successTitle, setSuccessTitle] = useState("Success!");
   const [successSubtitle, setSuccessSubtitle] = useState("Transaction confirmed.");
+  
+  // Calculate Total Loans for Borrower
+  const [totalLoans, setTotalLoans] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -78,50 +78,17 @@ const LoanDetailsPage: React.FC = () => {
     return () => unsubscribe();
   }, [loan?.lenderId]);
 
-  // Calculate/Fetch Stats when dependencies change
   useEffect(() => {
-     if (!borrower || !loan) return;
-
-     const fetchStats = async () => {
-        // 1. Fetch Loan History (Firebase - Reliable)
-        let calculatedStats = { ...borrowerStats };
-        
-        try {
-            const loansQuery = query(collection(db, "loans"), where("borrowerId", "==", loan.borrowerId));
-            const loansSnap = await getDocs(loansQuery);
-            const allLoans = loansSnap.docs.map(d => d.data());
-            
-            const totalLoans = allLoans.length;
-            const repaidLoans = allLoans.filter(l => l.status === 'repaid').length;
-            const defaultedLoans = allLoans.filter(l => l.status === 'defaulted').length;
-            const completedLoans = repaidLoans + defaultedLoans;
-            const repaymentRate = completedLoans > 0 ? Math.round((repaidLoans / completedLoans) * 100) : 100;
-            
-            calculatedStats.totalLoans = totalLoans;
-            calculatedStats.repaymentRate = repaymentRate;
-        } catch (dbError) {
-             console.error("Failed to fetch loan history:", dbError);
-             // Fallback to what's already in the borrower object from the listener
-             calculatedStats.totalLoans = borrowerStats.totalLoans || 0; 
-             calculatedStats.repaymentRate = borrower.repaymentRate ?? 100;
-        }
-
-        // 2. Fetch On-Chain Trust Score (Blockchain - Can Fail)
-        try {
-            const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
-            const trustContract = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, rpcProvider);
-            const score = await trustContract.getScore(borrower.walletAddress);
-            calculatedStats.trustScore = Math.min(100, Number(score));
-        } catch (chainError) {
-            console.error("Failed to fetch on-chain score, using Firebase fallback:", chainError);
-            calculatedStats.trustScore = borrower.trustScore ?? 100;
-        }
-
-        setBorrowerStats(calculatedStats);
-     };
-
-     fetchStats();
-  }, [borrower, loan?.status]);
+    if (!loan?.borrowerId) return;
+    
+    // Subscribe to loans to get real-time count
+    const q = query(collection(db, "loans"), where("borrowerId", "==", loan.borrowerId));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        setTotalLoans(snapshot.size);
+    });
+    
+    return () => unsubscribe();
+  }, [loan?.borrowerId]);
 
   const fireConfetti = () => {
     const duration = 3000;
@@ -155,8 +122,6 @@ const LoanDetailsPage: React.FC = () => {
     setIsProcessing(true);
 
     try {
-        // ... (Existing Fund Logic managed in Lending Page mostly, but here for redundancy)
-        // Check LendingPage logic for guidance
          if (!lendingPoolContract) throw new Error("Contract not loaded");
          
          const amountWei = parseEther(loan.amount.toString());
@@ -164,17 +129,18 @@ const LoanDetailsPage: React.FC = () => {
          
          await tx.wait();
 
+         const lenderName = user.firstName + " " + user.lastName;
+
          await updateDoc(doc(db, "loans", id), {
             status: 'active',
             lenderId: user.id,
-            lenderName: `${user.firstName} ${user.lastName}`,
+            lenderName: lenderName,
             fundedAt: new Date().toISOString()
          });
          
          fireConfetti(); // Fire after confirmation
          setIsSuccess(true);
          
-         // Modal stays open with success message
     } catch (err: any) {
       console.error(err);
       showToast("Funding failed: " + err.message, "error");
@@ -186,27 +152,22 @@ const LoanDetailsPage: React.FC = () => {
       if (!user) return showToast("Please connect your wallet first.", "error");
       if (!lendingPoolContract || !loan) return showToast("Contract or loan not loaded.", "error");
       
-      // Setup Modal for Repayment
       setModalTitle("Repaying Loan");
       setModalSubtitle("Returning principal + interest to lender...");
       setSuccessTitle("Debt Settled!");
-      setSuccessSubtitle("Loan repaid successfully. Your collateral is now unlocked.");
+      setSuccessSubtitle("Loan repaid successfully.");
       setIsProcessing(true);
 
       try {
-          // Fetch the EXACT values from the smart contract to avoid precision issues
           const onChainLoan = await lendingPoolContract.getLoan(loan.contractLoanId);
           
-          // Validation 1: Check if already repaid
           if (onChainLoan.repaid) {
              showToast("This loan is already repaid on-chain.", "info");
              setIsProcessing(false);
-             // Update logic to sync firebase if desirable, but return for now
              await updateDoc(doc(db, "loans", loan.id), { status: 'repaid' });
              return;
           }
 
-          // Validation 2: Check correct wallet
           const currentAddress = await signer?.getAddress();
           if (onChainLoan.borrower.toLowerCase() !== currentAddress?.toLowerCase()) {
               showToast("Wallet mismatch: You must strictly use the borrower wallet.", "error");
@@ -214,12 +175,11 @@ const LoanDetailsPage: React.FC = () => {
               return;
           }
 
-          // `onChainLoan.amount` and `onChainLoan.interest` are already in Wei (BigInt)
           const totalWei = onChainLoan.amount + onChainLoan.interest;
+          const formattedTotal = formatEther(totalWei);
 
-          showToast(`Repaying ${formatEther(totalWei)} QIE...`, "info");
+          showToast("Repaying " + formattedTotal + " QIE...", "info");
           
-          // Added manual gasLimit to avoid "missing revert data" estimation errors
           const tx = await lendingPoolContract.repayLoan(
               loan.contractLoanId, 
               { 
@@ -230,37 +190,24 @@ const LoanDetailsPage: React.FC = () => {
           
           await tx.wait();
 
-          // Update loan status
           await updateDoc(doc(db, "loans", loan.id), { 
             status: 'repaid',
             repaidAt: new Date().toISOString()
           });
           
-          // Sync borrower's trust score and repayment rate to Firebase
           try {
             const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
             const trustContract = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, rpcProvider);
             const newScore = await trustContract.getScore(borrower?.walletAddress || user?.walletAddress);
             
-            // Recalculate repayment rate with the now-repaid loan
-            const loansQuery = query(collection(db, "loans"), where("borrowerId", "==", loan.borrowerId));
-            const loansSnap = await getDocs(loansQuery);
-            const allLoans = loansSnap.docs.map(d => d.data());
-            const repaidLoans = allLoans.filter(l => l.status === 'repaid').length;
-            const defaultedLoans = allLoans.filter(l => l.status === 'defaulted').length;
-            const completedLoans = repaidLoans + defaultedLoans;
-            const repaymentRate = completedLoans > 0 ? Math.round((repaidLoans / completedLoans) * 100) : 100;
-            
-            // Update borrower's user document with synced values
             await updateDoc(doc(db, "users", loan.borrowerId), {
-              trustScore: Math.min(100, Number(newScore)),
-              repaymentRate: repaymentRate
+              trustScore: Math.min(100, Number(newScore))
             });
           } catch (syncError) {
             console.error("Failed to sync borrower stats:", syncError);
           }
           
-          fireConfetti(); // Fire after confirmation
+          fireConfetti();
           setIsSuccess(true);
           
       } catch (e: any) {
@@ -279,28 +226,6 @@ const LoanDetailsPage: React.FC = () => {
   const handleDefault = async () => {
       if (!lendingPoolContract || !loan) return;
       
-      // TODO: UNCOMMENT THIS TIME CHECK FOR PRODUCTION
-      // Time Check (Commented out for testing)
-      /*
-      if (loan.fundedAt) {
-          const startTime = new Date(loan.fundedAt).getTime();
-          const durationMs = (loan.duration || 0) * 24 * 60 * 60 * 1000;
-          const endTime = startTime + durationMs;
-          const now = Date.now();
-          const remaining = endTime - now;
-
-          if (remaining > 0) {
-              const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-              const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-              const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-              const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-              
-              const timeString = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-              return showToast(`Loan not yet defaulted. ${timeString} remaining.`, "error");
-          }
-      }
-      */
-
       setModalTitle("Checking Default");
       setModalSubtitle("Verifying loan status on-chain...");
       setSuccessTitle("Collateral Claimed");
@@ -318,25 +243,15 @@ const LoanDetailsPage: React.FC = () => {
             defaultedAt: new Date().toISOString()
           });
           
-          // Sync borrower's trust score and repayment rate to Firebase
+          // Sync borrower's trust score ONLY
           try {
             const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
             const trustContract = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, rpcProvider);
             const newScore = await trustContract.getScore(borrower?.walletAddress);
             
-            // Recalculate repayment rate with the now-defaulted loan
-            const loansQuery = query(collection(db, "loans"), where("borrowerId", "==", loan.borrowerId));
-            const loansSnap = await getDocs(loansQuery);
-            const allLoans = loansSnap.docs.map(d => d.data());
-            const repaidLoans = allLoans.filter(l => l.status === 'repaid').length;
-            const defaultedLoans = allLoans.filter(l => l.status === 'defaulted').length;
-            const completedLoans = repaidLoans + defaultedLoans;
-            const repaymentRate = completedLoans > 0 ? Math.round((repaidLoans / completedLoans) * 100) : 100;
-            
             // Update borrower's user document with synced values
             await updateDoc(doc(db, "users", loan.borrowerId), {
-              trustScore: Math.min(100, Number(newScore)),
-              repaymentRate: repaymentRate
+              trustScore: Math.min(100, Number(newScore))
             });
           } catch (syncError) {
             console.error("Failed to sync borrower stats:", syncError);
@@ -521,20 +436,18 @@ const LoanDetailsPage: React.FC = () => {
           <div className="space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-white/40">Trust Score</span>
-                <span className={`font-bold ${borrowerStats.trustScore >= 80 ? 'text-green-400' : borrowerStats.trustScore >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {borrowerStats.trustScore} / 100
+                <span className={`font-bold ${
+                  (trustScore || 0) >= 80 ? 'text-green-400' : 
+                  (trustScore || 0) >= 50 ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {scoreLoading ? "..." : (trustScore !== null ? `${trustScore} / 100` : "N/A")}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-white/40">Total Loans</span>
-                <span className="text-white font-bold">{borrowerStats.totalLoans}</span>
+                <span className="text-white font-bold">{totalLoans}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-white/40">Repayment Rate</span>
-                <span className={`font-bold ${borrowerStats.repaymentRate >= 80 ? 'text-green-400' : borrowerStats.repaymentRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {borrowerStats.repaymentRate}%
-                </span>
-              </div>
+               {/* Repayment Rate Removed */}
           </div>
         </div>
 

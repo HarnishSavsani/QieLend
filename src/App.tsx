@@ -82,7 +82,7 @@ const ProtectedRoute = ({ children }: React.PropsWithChildren<{}>) => {
 };
 
 const AppContent: React.FC = () => {
-  const { user, openWalletModal } = useAuth();
+  const { user, openWalletModal, signer } = useAuth();
 
   return (
     <div className="flex flex-col min-h-screen bg-background-dark text-white selection:bg-pink-500 selection:text-white">
@@ -98,7 +98,7 @@ const AppContent: React.FC = () => {
           path="*"
           element={
             <>
-              <Navbar isConnected={!!user?.walletAddress} onConnect={openWalletModal} />
+              <Navbar isConnected={!!signer} onConnect={openWalletModal} />
               <main className="flex-grow">
                 <Routes>
                   <Route path="/" element={<LandingPage />} />

@@ -1,13 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../config/firebase';
-import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from '../context/AuthContext';
-import { MOCK_TRANSACTIONS } from '../config/constants';
 
-import { formatEther, Contract, JsonRpcProvider } from 'ethers';
-import { CONTRACT_ADDRESSES, TRUST_SCORE_ABI, QIE_CHAIN_CONFIG } from '../config/blockchain';
+import { formatEther } from 'ethers';
+import { useUserStats } from '../hooks/useUserStats';
 
 const Dashboard: React.FC = () => {
   const { user, provider } = useAuth();
@@ -17,7 +15,9 @@ const Dashboard: React.FC = () => {
   const [loadingLoans, setLoadingLoans] = useState(true);
   const [loadingInvestments, setLoadingInvestments] = useState(true);
   const [balance, setBalance] = useState<string>("0.0");
-  const [trustScore, setTrustScore] = useState<number>(100);
+  
+  // Use Hook for Trust Score (Contract Only)
+  const { trustScore, loading: scoreLoading } = useUserStats(user?.walletAddress);
 
   useEffect(() => {
     if (provider && user?.walletAddress) {
@@ -30,23 +30,6 @@ const Dashboard: React.FC = () => {
         }
       };
       fetchBalance();
-      
-      // Fetch on-chain trust score (with Firebase fallback)
-      const fetchTrustScore = async () => {
-        try {
-          const rpcProvider = new JsonRpcProvider(QIE_CHAIN_CONFIG.rpcUrls[0]);
-          const trustContract = new Contract(CONTRACT_ADDRESSES.TrustToken, TRUST_SCORE_ABI, rpcProvider);
-          const score = await trustContract.getScore(user.walletAddress);
-          setTrustScore(Math.min(100, Number(score)));
-        } catch (err) {
-          console.error("Error fetching on-chain trust score, using Firebase cache:", err);
-          // Fallback to Firebase cached value if available
-          if (user?.trustScore !== undefined) {
-            setTrustScore(user.trustScore);
-          }
-        }
-      };
-      fetchTrustScore();
     }
   }, [provider, user?.walletAddress]);
 
@@ -71,7 +54,6 @@ const Dashboard: React.FC = () => {
     };
   }, [user]);
 
-  // DERIVED DATA: Separate actual Loans from Wallet Transactions (Piggyback strategy)
   // DERIVED DATA: Separate actual Loans from Wallet Transactions (Piggyback strategy)
   const realLoans = myLoans.filter(d => d.type !== 'wallet_tx');
   const walletTxs = myLoans.filter(d => d.type === 'wallet_tx')
@@ -108,11 +90,13 @@ const Dashboard: React.FC = () => {
             <div className="absolute -right-6 -top-6 bg-gradient-primary w-24 h-24 blur-[40px] rounded-full opacity-40"></div>
             <p className="text-white/50 text-sm font-medium mb-1">QIE Trust Score</p>
             <div className="flex items-end gap-2 mb-2">
-              <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-pink-200">{trustScore}</h3>
+              <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-pink-200">
+                {scoreLoading ? "..." : (trustScore !== null ? trustScore : "N/A")}
+              </h3>
               <span className="text-sm font-bold text-pink-400 mb-1.5">/ 100</span>
             </div>
             <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
-               <div className="bg-gradient-primary h-full" style={{ width: `${trustScore}%` }}></div>
+               <div className="bg-gradient-primary h-full" style={{ width: `${trustScore || 0}%` }}></div>
             </div>
           </div>
         </div>
@@ -122,7 +106,7 @@ const Dashboard: React.FC = () => {
           {/* Row 1: Borrowing (50%) & Lending (50%) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* My Borrowing */}
-              <div className="glass-panel rounded-2xl overflow-hidden flex flex-col max-h-[400px]">
+              <div className="glass-panel rounded-2xl overflow-hidden flex flex-col max-h-[320px]">
                 <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <span className="material-symbols-outlined text-pink-400">gavel</span> Borrowing
@@ -174,7 +158,7 @@ const Dashboard: React.FC = () => {
               </div>
 
               {/* My Lending */}
-              <div className="glass-panel rounded-2xl overflow-hidden flex flex-col max-h-[400px]">
+              <div className="glass-panel rounded-2xl overflow-hidden flex flex-col max-h-[320px]">
                 <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <span className="material-symbols-outlined text-purple-400">payments</span> Lending

@@ -248,26 +248,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSigner(null);
     setLendingPoolContract(null);
     setTrustScoreContract(null);
-    if (!user) return;
-    try {
-      await updateDoc(doc(db, "users", user.id), { walletAddress: null });
-      showToast("Wallet disconnected successfully.", "info");
-    } catch (error) {
-      console.error("Disconnect error:", error);
+    if (user) {
+        showToast("Wallet disconnected.", "info");
     }
   };
 
   const logout = async () => {
-    // For security, disconnect wallet on logout
-    if (user?.walletAddress) {
-      await updateDoc(doc(db, "users", user.id), { walletAddress: null });
-    }
+    // Wallet address remains linked in Firebase for Trust Score persistence
     await signOut(auth);
     setSigner(null);
     setLendingPoolContract(null);
     setTrustScoreContract(null);
     setUser(null);
-    showToast("Logged out and session secured.");
+    showToast("Logged out successfully.");
   };
 
   const resetPassword = async (email: string) => {

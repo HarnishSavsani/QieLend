@@ -8,7 +8,7 @@ import defaultAvatar from '../assets/default-avatar.svg';
 type TabType = 'profile' | 'security' | 'notifications' | 'wallets';
 
 const SettingsPage: React.FC = () => {
-  const { user, updateProfile, disconnectWallet, showToast, openWalletModal } = useAuth();
+  const { user, updateProfile, disconnectWallet, showToast, openWalletModal, signer } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -301,7 +301,7 @@ const SettingsPage: React.FC = () => {
                 <span className="material-symbols-outlined text-pink-400">account_balance_wallet</span> Connected Wallet
               </h2>
               
-              {user?.walletAddress ? (
+              {signer && user?.walletAddress ? (
                 <div className="space-y-6">
                   <div className="p-6 rounded-2xl bg-gradient-to-br from-pink-500/10 to-purple-600/10 border border-pink-500/20">
                     <div className="flex justify-between items-start mb-4">
@@ -331,7 +331,7 @@ const SettingsPage: React.FC = () => {
                     onClick={openWalletModal}
                     className="px-6 py-2 rounded-xl bg-gradient-primary text-white font-bold text-sm shadow-lg hover:scale-105 transition-all"
                    >
-                    Connect New Wallet
+                    Connect Wallet
                    </button>
                 </div>
               )}
